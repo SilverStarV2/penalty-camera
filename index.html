@@ -479,21 +479,21 @@
         }
 
         /* FULLSCREEN PAYSAGE - COMME TA PHOTO EXACTEMENT */
-        .fullscreen-mode .goal-frame {
-            width: 612px !important;  /* Basé sur analyse de ta photo - 72% écran */
-            height: 204px !important; /* Ratio FIFA 3:1 exact */
-        }
-        
-        .fullscreen-mode .goal-left-post, 
-        .fullscreen-mode .goal-right-post {
-            width: 6px !important;
-            height: 204px !important;
-        }
-        
-        .fullscreen-mode .goal-crossbar {
-            width: 612px !important;
-            height: 6px !important;
-        }
+    .fullscreen-mode .goal-frame {
+        width: 72vw !important;                /* Largeur dynamique = 72% de l’écran */
+        height: calc(72vw / 3) !important;     /* Hauteur pour un ratio 3:1 */
+    }
+
+    .fullscreen-mode .goal-left-post, 
+    .fullscreen-mode .goal-right-post {
+        width: 0.8vw !important;
+        height: calc(72vw / 3) !important;
+    }
+
+    .fullscreen-mode .goal-crossbar {
+        width: 72vw !important;
+        height: 0.8vw !important;
+    }
     </style>
 </head>
 <body>
