@@ -227,7 +227,79 @@
             backdrop-filter: blur(10px);
         }
 
-        .features {
+        .zoom-selector {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        .zoom-selector option {
+            background: #2a2a2a;
+            color: white;
+        }
+
+        .zoom-selector:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Overlay adaptatif selon le zoom */
+        .goal-frame.zoom-06 {
+            width: 380px;  /* Ultra wide - but plus petit dans le cadre */
+            height: 127px;
+        }
+
+        .goal-frame.zoom-1 {
+            width: 280px;  /* Standard x1 */
+            height: 94px;
+        }
+
+        .goal-frame.zoom-2 {
+            width: 140px;  /* Zoom x2 - but plus gros, overlay plus petit */
+            height: 47px;
+        }
+
+        /* Ajustements des poteaux selon le zoom */
+        .goal-frame.zoom-06 .goal-left-post,
+        .goal-frame.zoom-06 .goal-right-post {
+            width: 4px;
+            height: 127px;
+        }
+
+        .goal-frame.zoom-06 .goal-crossbar {
+            width: 380px;
+            height: 4px;
+        }
+
+        .goal-frame.zoom-1 .goal-left-post,
+        .goal-frame.zoom-1 .goal-right-post {
+            width: 3px;
+            height: 94px;
+        }
+
+        .goal-frame.zoom-1 .goal-crossbar {
+            width: 280px;
+            height: 3px;
+        }
+
+        .goal-frame.zoom-2 .goal-left-post,
+        .goal-frame.zoom-2 .goal-right-post {
+            width: 2px;
+            height: 47px;
+        }
+
+        .goal-frame.zoom-2 .goal-crossbar {
+            width: 140px;
+            height: 2px;
+        }
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
@@ -368,7 +440,7 @@
             height: 100vh !important;
         }
 
-        /* Responsive */
+        /* Responsive mobile avec zoom */
         @media (max-width: 768px) {
             .main-container {
                 padding: 15px;
@@ -382,18 +454,52 @@
                 height: 250px;
             }
             
-            .goal-frame {
-                width: 173px;  /* Taille correcte iPhone x1 portrait */
-                height: 58px;  /* Ratio FIFA 3:1 exact */
+            /* Overlay mobile adapté au zoom */
+            .goal-frame.zoom-06 {
+                width: 290px;
+                height: 97px;
             }
             
-            .goal-left-post, .goal-right-post {
+            .goal-frame.zoom-1 {
+                width: 173px;
+                height: 58px;
+            }
+            
+            .goal-frame.zoom-2 {
+                width: 115px;
+                height: 38px;
+            }
+            
+            .goal-frame.zoom-06 .goal-left-post,
+            .goal-frame.zoom-06 .goal-right-post {
+                width: 3px;
+                height: 97px;
+            }
+            
+            .goal-frame.zoom-06 .goal-crossbar {
+                width: 290px;
+                height: 3px;
+            }
+            
+            .goal-frame.zoom-1 .goal-left-post,
+            .goal-frame.zoom-1 .goal-right-post {
                 width: 2px;
                 height: 58px;
             }
             
-            .goal-crossbar {
+            .goal-frame.zoom-1 .goal-crossbar {
                 width: 173px;
+                height: 2px;
+            }
+            
+            .goal-frame.zoom-2 .goal-left-post,
+            .goal-frame.zoom-2 .goal-right-post {
+                width: 2px;
+                height: 38px;
+            }
+            
+            .goal-frame.zoom-2 .goal-crossbar {
+                width: 115px;
                 height: 2px;
             }
             
@@ -402,9 +508,15 @@
             }
             
             .btn {
-                min-width: 100px;
-                padding: 10px 16px;
-                font-size: 14px;
+                min-width: 90px;
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+            
+            .zoom-selector {
+                min-width: 120px;
+                padding: 10px 12px;
+                font-size: 13px;
             }
         }
 
@@ -506,6 +618,12 @@
                     🔄 Retourner
                 </button>
                 
+                <select class="zoom-selector" id="zoomSelector" onchange="changeZoom()">
+                    <option value="0.6">📐 x0.6 Ultra Wide</option>
+                    <option value="1" selected>📐 x1 Standard</option>
+                    <option value="2">📐 x2 Zoom</option>
+                </select>
+                
                 <button class="btn btn-secondary" id="fullscreenBtn" onclick="toggleFullscreen()" disabled>
                     🔳 Plein Écran
                 </button>
@@ -551,6 +669,7 @@
         let facingMode = 'environment';
         let overlayVisible = true;
         let isFullscreen = false;
+        let currentZoom = 1; // Zoom par défaut
 
         // Éléments DOM
         const status = document.getElementById('status');
@@ -563,6 +682,8 @@
         const overlayToggle = document.getElementById('overlayToggle');
         const recordingIndicator = document.getElementById('recordingIndicator');
         const videoContainer = document.querySelector('.video-container');
+        const zoomSelector = document.getElementById('zoomSelector');
+        const goalFrame = document.querySelector('.goal-frame');
 
         // Fonction pour mettre à jour le statut
         function updateStatus(message, type = 'info') {
@@ -785,7 +906,47 @@
             }
         }
 
-        // Changer de caméra
+        // Changer le zoom et ajuster l'overlay
+        function changeZoom() {
+            currentZoom = parseFloat(zoomSelector.value);
+            
+            // Supprimer les anciennes classes de zoom
+            goalFrame.classList.remove('zoom-06', 'zoom-1', 'zoom-2');
+            
+            // Ajouter la nouvelle classe selon le zoom
+            switch(currentZoom) {
+                case 0.6:
+                    goalFrame.classList.add('zoom-06');
+                    updateStatus('📐 Overlay ajusté pour ultra wide x0.6');
+                    break;
+                case 1:
+                    goalFrame.classList.add('zoom-1');
+                    updateStatus('📐 Overlay ajusté pour standard x1');
+                    break;
+                case 2:
+                    goalFrame.classList.add('zoom-2');
+                    updateStatus('📐 Overlay ajusté pour zoom x2');
+                    break;
+            }
+            
+            console.log(`Zoom changé: x${currentZoom}`);
+        }
+
+        // Initialiser l'overlay au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialiser avec zoom x1
+            goalFrame.classList.add('zoom-1');
+            
+            if (!navigator.mediaDevices?.getUserMedia) {
+                updateStatus('❌ Caméra non supportée');
+                return;
+            }
+            if (!window.MediaRecorder) {
+                updateStatus('❌ Enregistrement non supporté');
+                return;
+            }
+            updateStatus('📱 Prêt à filmer ! Choisissez votre zoom');
+        });
         async function flipCamera() {
             facingMode = facingMode === 'environment' ? 'user' : 'environment';
             await startCamera();
@@ -962,19 +1123,8 @@
             overlayToggle.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
         });
 
-        // Vérifications de base
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!navigator.mediaDevices?.getUserMedia) {
-                updateStatus('❌ Caméra non supportée');
-                return;
-            }
-            if (!window.MediaRecorder) {
-                updateStatus('❌ Enregistrement non supporté');
-                return;
-            }
-            updateStatus('📱 Prêt à filmer !');
-        });
-
+        // Vérifications de base - SUPPRIMÉ car déplacé plus haut
+        
         // Empêcher la mise en veille
         if ('wakeLock' in navigator) {
             navigator.wakeLock.request('screen').catch(() => {
