@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Penalty Camera</title>
+    <title>Penalty Camera Pro</title>
     <style>
         * {
             margin: 0;
@@ -14,41 +14,63 @@
         }
 
         body {
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            overflow: hidden;
-            position: fixed;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            -webkit-user-select: none;
-            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
         }
 
-        .app-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            display: flex;
-            flex-direction: column;
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
         }
 
-        /* iPhone 12 en paysage = 844x390px */
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.8;
+            font-size: 16px;
+        }
+
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .camera-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
         .video-container {
-            width: 100%;
-            height: 100%;
             position: relative;
+            margin: 20px 0;
+            border-radius: 16px;
             overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
             background: #000;
         }
 
-        #video {
+        #camera {
             width: 100%;
-            height: 100%;
+            height: 300px;
             object-fit: cover;
-            background: #000;
+            display: block;
         }
 
-        /* Overlay cage - uniquement les barreaux */
         .goal-overlay {
             position: absolute;
             top: 50%;
@@ -59,90 +81,116 @@
         }
 
         .goal-frame {
-            width: 300px;
-            height: 100px;
+            width: 240px;
+            height: 80px;
             position: relative;
         }
 
-        /* Montant gauche */
-        .goal-left-post {
+        .goal-post-left, .goal-post-right {
             position: absolute;
             top: 0;
-            left: 0;
-            width: 4px;
-            height: 100px;
+            width: 3px;
+            height: 80px;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 2px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
         }
 
-        /* Montant droit */
-        .goal-right-post {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 4px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 2px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-        }
+        .goal-post-left { left: 0; }
+        .goal-post-right { right: 0; }
 
-        /* Barre horizontale */
         .goal-crossbar {
             position: absolute;
             top: 0;
             left: 0;
-            width: 300px;
-            height: 4px;
+            width: 240px;
+            height: 3px;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 2px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
         }
 
-        /* Interface utilisateur */
-        .ui-controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+        .controls {
             display: flex;
-            gap: 30px;
-            z-index: 10;
+            justify-content: center;
+            gap: 15px;
+            margin: 25px 0;
+            flex-wrap: wrap;
         }
 
         .btn {
-            width: 60px;
-            height: 60px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.9);
-            color: #000;
-            font-size: 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
+            gap: 8px;
+            min-width: 120px;
             justify-content: center;
-            transition: all 0.2s ease;
-            -webkit-tap-highlight-color: transparent;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
 
         .btn:active {
-            transform: scale(0.95);
-            background: rgba(255, 255, 255, 0.7);
+            transform: translateY(0);
         }
 
-        .record-btn {
-            width: 70px;
-            height: 70px;
-            background: #ff4444;
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            margin: 20px 0;
+            font-size: 16px;
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .recording-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #ff6b6b;
             color: white;
-            font-size: 24px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: none;
+            animation: pulse 1.5s infinite;
         }
 
-        .record-btn.recording {
-            background: #ff6666;
-            animation: pulse 1s infinite;
+        .recording-indicator.active {
+            display: block;
         }
 
         @keyframes pulse {
@@ -150,408 +198,401 @@
             50% { opacity: 0.7; }
         }
 
-        .status-bar {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
-        }
-
-        .status-text {
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-        }
-
-        .rec-indicator {
-            background: rgba(255, 68, 68, 0.9);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            display: none;
-        }
-
-        .rec-indicator.active {
-            display: block;
-            animation: pulse 1s infinite;
-        }
-
         .overlay-toggle {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 15px;
+            left: 15px;
             background: rgba(0, 0, 0, 0.7);
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 8px 12px;
             border-radius: 20px;
             font-size: 12px;
             cursor: pointer;
-            z-index: 15;
-            -webkit-tap-highlight-color: transparent;
+            backdrop-filter: blur(10px);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .feature h3 {
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .feature p {
+            opacity: 0.8;
+            font-size: 14px;
+            line-height: 1.4;
         }
 
         .hidden {
             display: none !important;
         }
 
-        /* Orientation portrait - message d'instruction */
-        @media (orientation: portrait) {
-            .rotate-message {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: #000;
-                color: white;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                z-index: 100;
-                text-align: center;
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 15px;
+            }
+            
+            .camera-section {
                 padding: 20px;
             }
-
-            .rotate-icon {
-                font-size: 60px;
-                margin-bottom: 20px;
+            
+            #camera {
+                height: 250px;
             }
-
-            .video-container, .ui-controls, .status-bar {
-                display: none;
+            
+            .goal-frame {
+                width: 200px;
+                height: 67px;
+            }
+            
+            .goal-post-left, .goal-post-right {
+                height: 67px;
+            }
+            
+            .goal-crossbar {
+                width: 200px;
+            }
+            
+            .controls {
+                gap: 10px;
+            }
+            
+            .btn {
+                min-width: 100px;
+                padding: 10px 16px;
+                font-size: 14px;
             }
         }
 
-        @media (orientation: landscape) {
-            .rotate-message {
+        /* Mode paysage mobile */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .header {
+                padding: 10px 0;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .camera-section {
+                padding: 15px;
+            }
+            
+            #camera {
+                height: 200px;
+            }
+            
+            .features {
                 display: none;
             }
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Message rotation -->
-        <div class="rotate-message">
-            <div class="rotate-icon">📱</div>
-            <h2>Tournez votre iPhone</h2>
-            <p>Utilisez le mode paysage pour filmer les penalties</p>
-        </div>
+    <div class="header">
+        <h1>⚽ Penalty Camera Pro</h1>
+        <p>Filmez vos penalties avec un cadrage parfait</p>
+    </div>
 
-        <!-- Interface caméra -->
-        <div class="video-container">
-            <video id="video" autoplay playsinline muted></video>
-            
-            <!-- Overlay cage - uniquement les barreaux -->
-            <div class="goal-overlay" id="goalOverlay">
-                <div class="goal-frame">
-                    <div class="goal-left-post"></div>
-                    <div class="goal-right-post"></div>
-                    <div class="goal-crossbar"></div>
+    <div class="main-container">
+        <div class="camera-section">
+            <div class="status" id="status">
+                🎥 Cliquez sur "Démarrer" pour accéder à la caméra
+            </div>
+
+            <div class="video-container">
+                <video id="camera" autoplay playsinline muted></video>
+                
+                <div class="goal-overlay" id="goalOverlay">
+                    <div class="goal-frame">
+                        <div class="goal-post-left"></div>
+                        <div class="goal-post-right"></div>
+                        <div class="goal-crossbar"></div>
+                    </div>
                 </div>
+                
+                <div class="recording-indicator" id="recordingIndicator">
+                    ● REC
+                </div>
+                
+                <button class="overlay-toggle" id="overlayToggle">
+                    Masquer overlay
+                </button>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" id="startBtn" onclick="startCamera()">
+                    📷 Démarrer
+                </button>
+                
+                <button class="btn btn-secondary" id="flipBtn" onclick="flipCamera()" disabled>
+                    🔄 Retourner
+                </button>
+                
+                <button class="btn btn-success" id="recordBtn" onclick="toggleRecording()" disabled>
+                    ⏺️ Enregistrer
+                </button>
+                
+                <button class="btn btn-secondary hidden" id="downloadBtn" onclick="downloadVideo()">
+                    ⬇️ Télécharger
+                </button>
             </div>
         </div>
 
-        <!-- Barre de statut -->
-        <div class="status-bar">
-            <div class="status-text" id="status">Initialisation...</div>
-            <div class="rec-indicator" id="recIndicator">● REC</div>
-        </div>
-
-        <!-- Bouton overlay -->
-        <button class="overlay-toggle" id="overlayBtn">Masquer overlay</button>
-
-        <!-- Contrôles -->
-        <div class="ui-controls">
-            <button class="btn" id="flipBtn">🔄</button>
-            <button class="btn record-btn" id="recordBtn">●</button>
-            <button class="btn hidden" id="downloadBtn">⬇️</button>
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <h3>Cadrage Parfait</h3>
+                <p>Overlay aux proportions FIFA officielles pour un cadrage précis depuis le point de penalty</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3>Optimisé Mobile</h3>
+                <p>Interface adaptée iPhone et Android avec support du mode paysage</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">🎬</div>
+                <h3>Enregistrement HD</h3>
+                <p>Vidéos haute qualité avec téléchargement direct sur votre appareil</p>
+            </div>
         </div>
     </div>
 
     <script>
-        class PenaltyCam {
-            constructor() {
-                this.video = document.getElementById('video');
-                this.recordBtn = document.getElementById('recordBtn');
-                this.flipBtn = document.getElementById('flipBtn');
-                this.downloadBtn = document.getElementById('downloadBtn');
-                this.overlayBtn = document.getElementById('overlayBtn');
-                this.goalOverlay = document.getElementById('goalOverlay');
-                this.status = document.getElementById('status');
-                this.recIndicator = document.getElementById('recIndicator');
-                
-                this.mediaRecorder = null;
-                this.chunks = [];
-                this.isRecording = false;
-                this.stream = null;
-                this.facingMode = 'environment';
-                this.overlayVisible = true;
-                
-                this.init();
-            }
+        // Variables globales
+        let camera = document.getElementById('camera');
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let stream = null;
+        let isRecording = false;
+        let facingMode = 'environment';
+        let overlayVisible = true;
 
-            async init() {
-                try {
-                    this.status.textContent = 'Vérification des permissions...';
-                    
-                    // Vérifications détaillées
-                    if (!navigator.mediaDevices) {
-                        throw new Error('MediaDevices API non disponible');
-                    }
-                    
-                    if (!navigator.mediaDevices.getUserMedia) {
-                        throw new Error('getUserMedia non supporté');
-                    }
-                    
-                    if (!window.MediaRecorder) {
-                        throw new Error('MediaRecorder non supporté');
-                    }
+        // Éléments DOM
+        const status = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        const flipBtn = document.getElementById('flipBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const goalOverlay = document.getElementById('goalOverlay');
+        const overlayToggle = document.getElementById('overlayToggle');
+        const recordingIndicator = document.getElementById('recordingIndicator');
 
-                    // Lister les devices disponibles
-                    console.log('Listage des devices...');
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                    console.log('Caméras trouvées:', videoDevices.length);
-                    
-                    if (videoDevices.length === 0) {
-                        throw new Error('Aucune caméra détectée');
-                    }
+        // Fonction pour mettre à jour le statut
+        function updateStatus(message, type = 'info') {
+            status.innerHTML = message;
+            console.log(message);
+        }
 
-                    await this.setupCamera();
-                    this.setupEvents();
-                    
-                } catch (error) {
-                    console.error('Erreur init:', error);
-                    this.status.textContent = 'ERREUR: ' + error.message;
-                    
-                    // Bouton pour réessayer
-                    this.status.onclick = () => {
-                        this.status.onclick = null;
-                        this.init();
-                    };
-                    this.status.style.cursor = 'pointer';
-                    this.status.style.textDecoration = 'underline';
-                }
-            }
+        // Démarrer la caméra
+        async function startCamera() {
+            try {
+                updateStatus('🔄 Demande d\'accès à la caméra...');
+                startBtn.disabled = true;
 
-            async setupCamera() {
-                try {
-                    this.status.textContent = 'Demande accès caméra...';
-                    
-                    if (this.stream) {
-                        this.stream.getTracks().forEach(track => track.stop());
-                    }
-
-                    // Approche progressive - commencer simple
-                    let constraints = {
-                        video: {
-                            facingMode: this.facingMode
-                        },
-                        audio: false // Pas d'audio pour commencer
-                    };
-
-                    console.log('Tentative 1 - Contraintes de base:', constraints);
-                    
-                    try {
-                        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        this.status.textContent = 'Caméra connectée (base)';
-                    } catch (error) {
-                        console.log('Tentative 1 échouée, essai sans facingMode');
-                        
-                        // Fallback sans facingMode
-                        constraints = {
-                            video: true,
-                            audio: false
-                        };
-                        
-                        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        this.status.textContent = 'Caméra connectée (fallback)';
-                    }
-
-                    // Connecter le stream à la vidéo
-                    this.video.srcObject = this.stream;
-                    
-                    // Attendre le chargement
-                    return new Promise((resolve, reject) => {
-                        this.video.onloadedmetadata = () => {
-                            console.log('Vidéo chargée:', this.video.videoWidth, 'x', this.video.videoHeight);
-                            this.video.play()
-                                .then(() => {
-                                    this.status.textContent = 'Caméra prête';
-                                    resolve();
-                                })
-                                .catch(reject);
-                        };
-                        this.video.onerror = (e) => {
-                            console.error('Erreur vidéo:', e);
-                            reject(e);
-                        };
-                    });
-                    
-                } catch (error) {
-                    console.error('Erreur setup caméra:', error);
-                    this.status.textContent = 'Erreur caméra: ' + error.message;
-                    throw error;
-                }
-            }
-
-            setupEvents() {
-                this.recordBtn.addEventListener('click', () => {
-                    if (this.isRecording) {
-                        this.stopRecording();
-                    } else {
-                        this.startRecording();
-                    }
-                });
-
-                this.flipBtn.addEventListener('click', () => {
-                    this.flipCamera();
-                });
-
-                this.overlayBtn.addEventListener('click', () => {
-                    this.toggleOverlay();
-                });
-
-                this.downloadBtn.addEventListener('click', () => {
-                    this.downloadVideo();
-                });
-            }
-
-            async flipCamera() {
-                this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
-                this.status.textContent = 'Changement de caméra...';
-                
-                try {
-                    await this.setupCamera();
-                    this.status.textContent = 'Caméra changée';
-                } catch (error) {
-                    this.status.textContent = 'Erreur changement caméra';
-                    console.error(error);
-                }
-            }
-
-            toggleOverlay() {
-                this.overlayVisible = !this.overlayVisible;
-                this.goalOverlay.classList.toggle('hidden', !this.overlayVisible);
-                this.overlayBtn.textContent = this.overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
-            }
-
-            startRecording() {
-                try {
-                    if (!this.stream) {
-                        throw new Error('Aucun stream disponible');
-                    }
-
-                    this.chunks = [];
-                    
-                    // Format le plus compatible iPhone
-                    const options = {
-                        mimeType: 'video/mp4'
-                    };
-                    
-                    // Fallback si MP4 non supporté
-                    if (!MediaRecorder.isTypeSupported('video/mp4')) {
-                        if (MediaRecorder.isTypeSupported('video/webm')) {
-                            options.mimeType = 'video/webm';
-                        } else {
-                            delete options.mimeType;
-                        }
-                    }
-
-                    this.mediaRecorder = new MediaRecorder(this.stream, options);
-                    
-                    this.mediaRecorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) {
-                            this.chunks.push(e.data);
-                        }
-                    };
-
-                    this.mediaRecorder.onstop = () => {
-                        this.saveRecording();
-                    };
-
-                    this.mediaRecorder.start();
-                    this.isRecording = true;
-                    
-                    this.recordBtn.textContent = '⏹️';
-                    this.recordBtn.classList.add('recording');
-                    this.recIndicator.classList.add('active');
-                    this.status.textContent = 'Enregistrement...';
-                    
-                } catch (error) {
-                    console.error('Erreur enregistrement:', error);
-                    this.status.textContent = 'Erreur: ' + error.message;
-                }
-            }
-
-            stopRecording() {
-                if (this.mediaRecorder && this.isRecording) {
-                    this.mediaRecorder.stop();
-                    this.isRecording = false;
-                    
-                    this.recordBtn.textContent = '●';
-                    this.recordBtn.classList.remove('recording');
-                    this.recIndicator.classList.remove('active');
-                    this.status.textContent = 'Traitement...';
-                }
-            }
-
-            saveRecording() {
-                if (this.chunks.length === 0) {
-                    this.status.textContent = 'Aucune donnée enregistrée';
-                    return;
+                // Arrêter le stream existant
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
                 }
 
-                const mimeType = this.chunks[0].type || 'video/mp4';
-                const blob = new Blob(this.chunks, { type: mimeType });
-                const url = URL.createObjectURL(blob);
-                
-                // Créer le lien de téléchargement
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `penalty_${Date.now()}.mp4`;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                
-                this.downloadBtn.onclick = () => {
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
+                // Contraintes de base
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1920, min: 1280 },
+                        height: { ideal: 1080, min: 720 }
+                    },
+                    audio: true
                 };
-                
-                this.downloadBtn.classList.remove('hidden');
-                this.status.textContent = `Vidéo prête (${Math.round(blob.size/1024/1024)}MB)`;
-            }
 
-            downloadVideo() {
-                if (this.downloadBtn.onclick) {
-                    this.downloadBtn.onclick();
-                }
+                // Obtenir le stream
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                camera.srcObject = stream;
+
+                // Attendre que la vidéo soit prête
+                await new Promise((resolve) => {
+                    camera.onloadedmetadata = resolve;
+                });
+
+                await camera.play();
+
+                // Activer les contrôles
+                flipBtn.disabled = false;
+                recordBtn.disabled = false;
+                startBtn.textContent = '✅ Caméra Active';
+                startBtn.disabled = false;
+
+                updateStatus('✅ Caméra prête ! Vous pouvez maintenant filmer');
+
+            } catch (error) {
+                console.error('Erreur caméra:', error);
+                updateStatus(`❌ Erreur: ${error.message}. Vérifiez les permissions Safari.`);
+                startBtn.disabled = false;
+                startBtn.textContent = '🔄 Réessayer';
             }
         }
 
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', () => {
-            new PenaltyCam();
+        // Changer de caméra
+        async function flipCamera() {
+            facingMode = facingMode === 'environment' ? 'user' : 'environment';
+            await startCamera();
+        }
+
+        // Basculer l'enregistrement
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        // Démarrer l'enregistrement
+        function startRecording() {
+            try {
+                if (!stream) {
+                    updateStatus('❌ Aucun stream caméra disponible');
+                    return;
+                }
+
+                recordedChunks = [];
+
+                // Options d'enregistrement
+                const options = {
+                    mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+                        ? 'video/webm;codecs=vp9' 
+                        : 'video/webm'
+                };
+
+                mediaRecorder = new MediaRecorder(stream, options);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    createDownloadLink();
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+
+                // Mise à jour de l'interface
+                recordBtn.innerHTML = '⏹️ Arrêter';
+                recordBtn.className = 'btn btn-primary';
+                recordingIndicator.classList.add('active');
+                flipBtn.disabled = true;
+
+                updateStatus('🔴 Enregistrement en cours...');
+
+            } catch (error) {
+                console.error('Erreur enregistrement:', error);
+                updateStatus(`❌ Erreur d'enregistrement: ${error.message}`);
+            }
+        }
+
+        // Arrêter l'enregistrement
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+
+                // Mise à jour de l'interface
+                recordBtn.innerHTML = '⏺️ Enregistrer';
+                recordBtn.className = 'btn btn-success';
+                recordingIndicator.classList.remove('active');
+                flipBtn.disabled = false;
+
+                updateStatus('🔄 Traitement de la vidéo...');
+            }
+        }
+
+        // Créer le lien de téléchargement
+        function createDownloadLink() {
+            if (recordedChunks.length === 0) {
+                updateStatus('❌ Aucune donnée enregistrée');
+                return;
+            }
+
+            const blob = new Blob(recordedChunks, { 
+                type: recordedChunks[0].type || 'video/webm' 
+            });
+            
+            const url = URL.createObjectURL(blob);
+            const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+
+            // Préparer le téléchargement
+            downloadBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `penalty_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            downloadBtn.classList.remove('hidden');
+            updateStatus(`✅ Vidéo prête (${sizeMB} MB) ! Cliquez sur Télécharger`);
+        }
+
+        // Télécharger la vidéo
+        function downloadVideo() {
+            downloadBtn.onclick();
+        }
+
+        // Basculer l'overlay
+        overlayToggle.addEventListener('click', () => {
+            overlayVisible = !overlayVisible;
+            goalOverlay.style.display = overlayVisible ? 'block' : 'none';
+            overlayToggle.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
         });
 
-        // Prévenir la mise en veille
-        let wakeLock = null;
+        // Vérifications initiales
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                updateStatus('❌ getUserMedia non supporté sur ce navigateur');
+                startBtn.disabled = true;
+                return;
+            }
+
+            if (!window.MediaRecorder) {
+                updateStatus('❌ MediaRecorder non supporté sur ce navigateur');
+                return;
+            }
+
+            updateStatus('📱 Application prête ! Cliquez sur "Démarrer" pour commencer');
+        });
+
+        // Empêcher la mise en veille
         if ('wakeLock' in navigator) {
-            navigator.wakeLock.request('screen').then(lock => {
-                wakeLock = lock;
-            }).catch(err => {
-                console.log('Wake lock failed:', err);
+            navigator.wakeLock.request('screen').catch(() => {
+                console.log('Wake lock non disponible');
             });
         }
     </script>
