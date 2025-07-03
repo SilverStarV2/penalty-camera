@@ -578,13 +578,53 @@
             }
         }
 
-        // Entrer en mode plein écran
+        // Entrer en mode plein écran (VRAI fullscreen Safari)
         function enterFullscreen() {
+            try {
+                // Utiliser l'API Fullscreen native pour masquer les barres Safari
+                if (videoContainer.requestFullscreen) {
+                    videoContainer.requestFullscreen();
+                } else if (videoContainer.webkitRequestFullscreen) {
+                    videoContainer.webkitRequestFullscreen(); // Safari
+                } else if (videoContainer.mozRequestFullScreen) {
+                    videoContainer.mozRequestFullScreen(); // Firefox
+                } else if (videoContainer.msRequestFullscreen) {
+                    videoContainer.msRequestFullscreen(); // IE/Edge
+                } else {
+                    // Fallback si l'API fullscreen n'est pas supportée
+                    fallbackFullscreen();
+                    return;
+                }
+
+                // Le reste sera géré dans l'event listener fullscreenchange
+                
+            } catch (error) {
+                console.log('Fullscreen API non disponible, utilisation du fallback');
+                fallbackFullscreen();
+            }
+        }
+
+        // Mode fullscreen de fallback
+        function fallbackFullscreen() {
             isFullscreen = true;
             
             // Ajouter la classe fullscreen
             videoContainer.classList.add('fullscreen-mode');
             
+            // Créer l'interface fullscreen
+            createFullscreenInterface();
+            
+            // Masquer le body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // Mettre à jour le bouton principal
+            fullscreenBtn.textContent = '🔲 Quitter FS';
+            
+            updateStatus('📱 Mode plein écran activé !');
+        }
+
+        // Créer l'interface fullscreen
+        function createFullscreenInterface() {
             // Créer les contrôles fullscreen
             const fullscreenControls = document.createElement('div');
             fullscreenControls.className = 'fullscreen-controls';
@@ -622,18 +662,34 @@
             videoContainer.appendChild(exitBtn);
             videoContainer.appendChild(overlayToggleFs);
             videoContainer.appendChild(statusFs);
-            
-            // Masquer le body scroll
-            document.body.style.overflow = 'hidden';
-            
-            // Mettre à jour le bouton principal
-            fullscreenBtn.textContent = '🔲 Quitter FS';
-            
-            updateStatus('📱 Mode plein écran activé ! Utilisez les contrôles sur l\'écran');
         }
 
         // Sortir du mode plein écran
         function exitFullscreen() {
+            try {
+                if (document.fullscreenElement || document.webkitFullscreenElement || 
+                    document.mozFullScreenElement || document.msFullscreenElement) {
+                    // Sortir du vrai fullscreen
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                } else {
+                    // Sortir du mode fallback
+                    cleanupFullscreen();
+                }
+            } catch (error) {
+                cleanupFullscreen();
+            }
+        }
+
+        // Nettoyer l'interface fullscreen
+        function cleanupFullscreen() {
             isFullscreen = false;
             
             // Supprimer la classe fullscreen
@@ -659,6 +715,26 @@
             updateStatus('📱 Mode normal restauré');
         }
 
+        // Event listeners pour le fullscreen natif
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        function handleFullscreenChange() {
+            if (document.fullscreenElement || document.webkitFullscreenElement || 
+                document.mozFullScreenElement || document.msFullscreenElement) {
+                // Entré en fullscreen
+                isFullscreen = true;
+                createFullscreenInterface();
+                fullscreenBtn.textContent = '🔲 Quitter FS';
+                updateStatus('📱 Mode plein écran activé - Barres Safari masquées !');
+            } else {
+                // Sorti du fullscreen
+                cleanupFullscreen();
+            }
+        }
+
         // Changer de caméra
         async function flipCamera() {
             facingMode = facingMode === 'environment' ? 'user' : 'environment';
@@ -674,7 +750,7 @@
             }
         }
 
-        // Démarrer l'enregistrement
+        // Démarrer l'enregistrement - VERSION SIMPLE QUI MARCHE
         function startRecording() {
             try {
                 if (!stream) {
@@ -683,72 +759,94 @@
                 }
 
                 recordedChunks = [];
-
-                // Options d'enregistrement
-                const options = {
-                    mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
-                        ? 'video/webm;codecs=vp9' 
-                        : 'video/webm'
-                };
-
-                mediaRecorder = new MediaRecorder(stream, options);
+                
+                // SIMPLE : Pas de mimeType du tout, on laisse le navigateur décider
+                console.log('🎥 Création MediaRecorder sans mimeType');
+                mediaRecorder = new MediaRecorder(stream);
 
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         recordedChunks.push(event.data);
+                        console.log('📦 Chunk:', event.data.size, 'bytes');
                     }
                 };
 
                 mediaRecorder.onstop = () => {
+                    console.log('⏹️ Arrêt, chunks:', recordedChunks.length);
                     createDownloadLink();
                 };
 
+                mediaRecorder.onerror = (event) => {
+                    console.error('💥 Erreur:', event.error);
+                    updateStatus(`❌ Erreur: ${event.error.message}`);
+                    isRecording = false;
+                    updateRecordingInterface(false);
+                };
+
+                // Démarrer SANS options
                 mediaRecorder.start();
                 isRecording = true;
+                updateRecordingInterface(true);
+                updateStatus('🔴 Enregistrement...');
 
-                // Mise à jour de l'interface
+            } catch (error) {
+                console.error('💥 Erreur:', error);
+                updateStatus(`❌ Erreur: ${error.message}`);
+            }
+        }
+
+        // Fonction pour mettre à jour l'interface d'enregistrement
+        function updateRecordingInterface(recording) {
+            if (recording) {
                 recordBtn.innerHTML = '⏹️ Arrêter';
                 recordBtn.className = 'btn btn-primary';
                 recordingIndicator.classList.add('active');
                 flipBtn.disabled = true;
                 fullscreenBtn.disabled = true;
                 
-                // Mettre à jour aussi le bouton fullscreen si en mode fullscreen
+                // Mettre à jour le bouton fullscreen si présent
                 const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
                 if (fullscreenRecordBtn) {
                     fullscreenRecordBtn.innerHTML = '⏹️';
                     fullscreenRecordBtn.classList.add('recording');
                 }
-
-                updateStatus('🔴 Enregistrement en cours...');
-
-            } catch (error) {
-                console.error('Erreur enregistrement:', error);
-                updateStatus(`❌ Erreur d'enregistrement: ${error.message}`);
-            }
-        }
-
-        // Arrêter l'enregistrement
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-
-                // Mise à jour de l'interface
+            } else {
                 recordBtn.innerHTML = '⏺️ Enregistrer';
                 recordBtn.className = 'btn btn-success';
                 recordingIndicator.classList.remove('active');
                 flipBtn.disabled = false;
                 fullscreenBtn.disabled = false;
                 
-                // Mettre à jour aussi le bouton fullscreen si en mode fullscreen
+                // Mettre à jour le bouton fullscreen si présent
                 const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
                 if (fullscreenRecordBtn) {
                     fullscreenRecordBtn.innerHTML = '⏺️';
                     fullscreenRecordBtn.classList.remove('recording');
                 }
+            }
+        }
 
-                updateStatus('🔄 Traitement de la vidéo...');
+        // Fonction pour reset l'interface en cas d'erreur
+        function resetRecordingInterface() {
+            isRecording = false;
+            updateRecordingInterface(false);
+        }
+
+        // Arrêter l'enregistrement
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                console.log('🛑 Arrêt de l\'enregistrement...');
+                
+                try {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    updateRecordingInterface(false);
+                    updateStatus('🔄 Traitement de la vidéo...');
+                } catch (error) {
+                    console.error('Erreur lors de l\'arrêt:', error);
+                    updateStatus('❌ Erreur lors de l\'arrêt de l\'enregistrement');
+                    resetRecordingInterface();
+                }
             }
         }
 
@@ -759,26 +857,47 @@
                 return;
             }
 
-            const blob = new Blob(recordedChunks, { 
-                type: recordedChunks[0].type || 'video/webm' 
-            });
+            // Détecter le type MIME et l'extension appropriée
+            let mimeType = 'video/webm'; // Fallback par défaut
+            let fileExtension = 'webm';
             
+            if (recordedChunks[0] && recordedChunks[0].type) {
+                mimeType = recordedChunks[0].type;
+                console.log('Type MIME détecté:', mimeType);
+                
+                // Déterminer l'extension en fonction du type
+                if (mimeType.includes('mp4')) {
+                    fileExtension = 'mp4';
+                } else if (mimeType.includes('webm')) {
+                    fileExtension = 'webm';
+                } else if (mimeType.includes('ogg')) {
+                    fileExtension = 'ogv';
+                }
+            }
+            
+            const blob = new Blob(recordedChunks, { type: mimeType });
             const url = URL.createObjectURL(blob);
             const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+            
+            console.log(`Blob créé: ${sizeMB}MB, type: ${mimeType}, extension: ${fileExtension}`);
 
             // Préparer le téléchargement
             downloadBtn.onclick = () => {
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `penalty_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+                a.download = `penalty_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${fileExtension}`;
+                a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+                
+                // Message de confirmation
+                updateStatus(`✅ Téléchargement lancé ! Vidéo sauvée en .${fileExtension}`);
             };
 
             downloadBtn.classList.remove('hidden');
-            updateStatus(`✅ Vidéo prête (${sizeMB} MB) ! Cliquez sur Télécharger`);
+            updateStatus(`✅ Vidéo prête (${sizeMB} MB, .${fileExtension}) ! Cliquez sur Télécharger`);
         }
 
         // Télécharger la vidéo
@@ -793,20 +912,17 @@
             overlayToggle.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
         });
 
-        // Vérifications initiales
+        // Vérifications de base
         document.addEventListener('DOMContentLoaded', () => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                updateStatus('❌ getUserMedia non supporté sur ce navigateur');
-                startBtn.disabled = true;
+            if (!navigator.mediaDevices?.getUserMedia) {
+                updateStatus('❌ Caméra non supportée');
                 return;
             }
-
             if (!window.MediaRecorder) {
-                updateStatus('❌ MediaRecorder non supporté sur ce navigateur');
+                updateStatus('❌ Enregistrement non supporté');
                 return;
             }
-
-            updateStatus('📱 Application prête ! Cliquez sur "Démarrer" pour commencer');
+            updateStatus('📱 Prêt à filmer !');
         });
 
         // Empêcher la mise en veille
