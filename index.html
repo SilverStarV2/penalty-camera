@@ -81,8 +81,8 @@
         }
 
         .goal-frame {
-            width: 360px;  /* Angle de vue réel iPhone x1 depuis 11m */
-            height: 120px; /* Ratio FIFA 3:1 exact maintenu */
+            width: 280px;  /* Ajusté pour iPhone x1 depuis 11m */
+            height: 94px;  /* Ratio FIFA 3:1 exact */
             position: relative;
         }
 
@@ -91,11 +91,11 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 4px;  /* Proportionnel à la taille */
-            height: 120px;
+            width: 3px;  /* Plus fin, proportionnel */
+            height: 94px;
             background: rgba(255, 255, 255, 1);
-            border-radius: 2px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            border-radius: 1.5px;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             z-index: 10;
         }
 
@@ -104,11 +104,11 @@
             position: absolute;
             top: 0;
             right: 0;
-            width: 4px;  /* Proportionnel à la taille */
-            height: 120px;
+            width: 3px;  /* Plus fin, proportionnel */
+            height: 94px;
             background: rgba(255, 255, 255, 1);
-            border-radius: 2px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            border-radius: 1.5px;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             z-index: 10;
         }
 
@@ -117,11 +117,11 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 360px;
-            height: 4px;  /* Proportionnel à la taille */
+            width: 280px;
+            height: 3px;  /* Plus fin, proportionnel */
             background: rgba(255, 255, 255, 1);
-            border-radius: 2px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            border-radius: 1.5px;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             z-index: 10;
         }
 
@@ -383,18 +383,18 @@
             }
             
             .goal-frame {
-                width: 212px;  /* Calcul précis iPhone x1 depuis 11m */
-                height: 71px;  /* Ratio FIFA 3:1 exact */
+                width: 173px;  /* Taille correcte iPhone x1 portrait */
+                height: 58px;  /* Ratio FIFA 3:1 exact */
             }
             
             .goal-left-post, .goal-right-post {
-                width: 3px;
-                height: 71px;
+                width: 2px;
+                height: 58px;
             }
             
             .goal-crossbar {
-                width: 212px;
-                height: 3px;
+                width: 173px;
+                height: 2px;
             }
             
             .controls {
@@ -430,38 +430,38 @@
                 display: none;
             }
             
-            /* OVERLAY PLUS GRAND EN PAYSAGE - comme sur ta photo */
+            /* OVERLAY AJUSTÉ EN PAYSAGE - iPhone x1 */
             .goal-frame {
-                width: 450px !important;  /* Beaucoup plus large en paysage */
-                height: 150px !important; /* Plus haut aussi - ratio FIFA maintenu */
+                width: 271px !important;  /* Taille réaliste paysage */
+                height: 90px !important;  /* Ratio FIFA 3:1 */
             }
             
             .goal-left-post, .goal-right-post {
-                width: 5px !important;
-                height: 150px !important;
+                width: 3px !important;
+                height: 90px !important;
             }
             
             .goal-crossbar {
-                width: 450px !important;
-                height: 5px !important;
+                width: 271px !important;
+                height: 3px !important;
             }
         }
 
-        /* FULLSCREEN PAYSAGE - OVERLAY ENCORE PLUS GRAND */
+        /* FULLSCREEN PAYSAGE - TAILLE MODÉRÉE */
         .fullscreen-mode .goal-frame {
-            width: 600px !important;  /* Maximum en fullscreen paysage */
-            height: 200px !important; /* Ratio 3:1 FIFA maintenu */
+            width: 320px !important;  /* Plus modéré qu'avant */
+            height: 107px !important; /* Ratio 3:1 FIFA */
         }
         
         .fullscreen-mode .goal-left-post, 
         .fullscreen-mode .goal-right-post {
-            width: 6px !important;
-            height: 200px !important;
+            width: 4px !important;
+            height: 107px !important;
         }
         
         .fullscreen-mode .goal-crossbar {
-            width: 600px !important;
-            height: 6px !important;
+            width: 320px !important;
+            height: 4px !important;
         }
     </style>
 </head>
