@@ -429,6 +429,39 @@
             .features {
                 display: none;
             }
+            
+            /* OVERLAY PLUS GRAND EN PAYSAGE - comme sur ta photo */
+            .goal-frame {
+                width: 450px !important;  /* Beaucoup plus large en paysage */
+                height: 150px !important; /* Plus haut aussi - ratio FIFA maintenu */
+            }
+            
+            .goal-left-post, .goal-right-post {
+                width: 5px !important;
+                height: 150px !important;
+            }
+            
+            .goal-crossbar {
+                width: 450px !important;
+                height: 5px !important;
+            }
+        }
+
+        /* FULLSCREEN PAYSAGE - OVERLAY ENCORE PLUS GRAND */
+        .fullscreen-mode .goal-frame {
+            width: 600px !important;  /* Maximum en fullscreen paysage */
+            height: 200px !important; /* Ratio 3:1 FIFA maintenu */
+        }
+        
+        .fullscreen-mode .goal-left-post, 
+        .fullscreen-mode .goal-right-post {
+            width: 6px !important;
+            height: 200px !important;
+        }
+        
+        .fullscreen-mode .goal-crossbar {
+            width: 600px !important;
+            height: 6px !important;
         }
     </style>
 </head>
