@@ -243,8 +243,114 @@
             line-height: 1.4;
         }
 
+        .fullscreen-mode {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            background: #000 !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+        }
+
+        .fullscreen-mode #camera {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+
+        .fullscreen-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 10000;
+        }
+
+        .fullscreen-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .fullscreen-btn:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .fullscreen-btn.record {
+            background: #ff6b6b;
+            color: white;
+            width: 70px;
+            height: 70px;
+            font-size: 24px;
+        }
+
+        .fullscreen-btn.record.recording {
+            background: #ff4444;
+            animation: pulse 1s infinite;
+        }
+
+        .fullscreen-exit {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 10001;
+        }
+
+        .fullscreen-overlay-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 10001;
+        }
+
         .hidden {
             display: none !important;
+        }
+
+        /* Gestion du fullscreen natif pour mobile */
+        .video-container:-webkit-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        .video-container:-moz-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        .video-container:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
         }
 
         /* Responsive */
@@ -350,6 +456,10 @@
                     🔄 Retourner
                 </button>
                 
+                <button class="btn btn-secondary" id="fullscreenBtn" onclick="toggleFullscreen()" disabled>
+                    🔳 Plein Écran
+                </button>
+                
                 <button class="btn btn-success" id="recordBtn" onclick="toggleRecording()" disabled>
                     ⏺️ Enregistrer
                 </button>
@@ -390,16 +500,19 @@
         let isRecording = false;
         let facingMode = 'environment';
         let overlayVisible = true;
+        let isFullscreen = false;
 
         // Éléments DOM
         const status = document.getElementById('status');
         const startBtn = document.getElementById('startBtn');
         const flipBtn = document.getElementById('flipBtn');
         const recordBtn = document.getElementById('recordBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const goalOverlay = document.getElementById('goalOverlay');
         const overlayToggle = document.getElementById('overlayToggle');
         const recordingIndicator = document.getElementById('recordingIndicator');
+        const videoContainer = document.querySelector('.video-container');
 
         // Fonction pour mettre à jour le statut
         function updateStatus(message, type = 'info') {
@@ -442,6 +555,7 @@
                 // Activer les contrôles
                 flipBtn.disabled = false;
                 recordBtn.disabled = false;
+                fullscreenBtn.disabled = false;
                 startBtn.textContent = '✅ Caméra Active';
                 startBtn.disabled = false;
 
@@ -453,6 +567,96 @@
                 startBtn.disabled = false;
                 startBtn.textContent = '🔄 Réessayer';
             }
+        }
+
+        // Basculer le mode plein écran
+        function toggleFullscreen() {
+            if (!isFullscreen) {
+                enterFullscreen();
+            } else {
+                exitFullscreen();
+            }
+        }
+
+        // Entrer en mode plein écran
+        function enterFullscreen() {
+            isFullscreen = true;
+            
+            // Ajouter la classe fullscreen
+            videoContainer.classList.add('fullscreen-mode');
+            
+            // Créer les contrôles fullscreen
+            const fullscreenControls = document.createElement('div');
+            fullscreenControls.className = 'fullscreen-controls';
+            fullscreenControls.id = 'fullscreenControls';
+            
+            fullscreenControls.innerHTML = `
+                <button class="fullscreen-btn" onclick="flipCamera()">🔄</button>
+                <button class="fullscreen-btn record" id="fullscreenRecordBtn" onclick="toggleRecording()">⏺️</button>
+            `;
+            
+            // Bouton sortir du fullscreen
+            const exitBtn = document.createElement('button');
+            exitBtn.className = 'fullscreen-exit';
+            exitBtn.textContent = '✕ Sortir';
+            exitBtn.onclick = exitFullscreen;
+            
+            // Toggle overlay fullscreen
+            const overlayToggleFs = document.createElement('button');
+            overlayToggleFs.className = 'fullscreen-overlay-toggle';
+            overlayToggleFs.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
+            overlayToggleFs.onclick = () => {
+                overlayVisible = !overlayVisible;
+                goalOverlay.style.display = overlayVisible ? 'block' : 'none';
+                overlayToggleFs.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
+            };
+            
+            // Status fullscreen
+            const statusFs = document.createElement('div');
+            statusFs.className = 'fullscreen-status';
+            statusFs.id = 'fullscreenStatus';
+            statusFs.textContent = 'Mode plein écran - Cadrez parfaitement votre penalty';
+            
+            // Ajouter les éléments
+            videoContainer.appendChild(fullscreenControls);
+            videoContainer.appendChild(exitBtn);
+            videoContainer.appendChild(overlayToggleFs);
+            videoContainer.appendChild(statusFs);
+            
+            // Masquer le body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // Mettre à jour le bouton principal
+            fullscreenBtn.textContent = '🔲 Quitter FS';
+            
+            updateStatus('📱 Mode plein écran activé ! Utilisez les contrôles sur l\'écran');
+        }
+
+        // Sortir du mode plein écran
+        function exitFullscreen() {
+            isFullscreen = false;
+            
+            // Supprimer la classe fullscreen
+            videoContainer.classList.remove('fullscreen-mode');
+            
+            // Supprimer les contrôles fullscreen
+            const fullscreenControls = document.getElementById('fullscreenControls');
+            const exitBtn = videoContainer.querySelector('.fullscreen-exit');
+            const overlayToggleFs = videoContainer.querySelector('.fullscreen-overlay-toggle');
+            const statusFs = document.getElementById('fullscreenStatus');
+            
+            if (fullscreenControls) fullscreenControls.remove();
+            if (exitBtn) exitBtn.remove();
+            if (overlayToggleFs) overlayToggleFs.remove();
+            if (statusFs) statusFs.remove();
+            
+            // Restaurer le body scroll
+            document.body.style.overflow = '';
+            
+            // Mettre à jour le bouton principal
+            fullscreenBtn.textContent = '🔳 Plein Écran';
+            
+            updateStatus('📱 Mode normal restauré');
         }
 
         // Changer de caméra
@@ -507,6 +711,14 @@
                 recordBtn.className = 'btn btn-primary';
                 recordingIndicator.classList.add('active');
                 flipBtn.disabled = true;
+                fullscreenBtn.disabled = true;
+                
+                // Mettre à jour aussi le bouton fullscreen si en mode fullscreen
+                const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
+                if (fullscreenRecordBtn) {
+                    fullscreenRecordBtn.innerHTML = '⏹️';
+                    fullscreenRecordBtn.classList.add('recording');
+                }
 
                 updateStatus('🔴 Enregistrement en cours...');
 
@@ -527,6 +739,14 @@
                 recordBtn.className = 'btn btn-success';
                 recordingIndicator.classList.remove('active');
                 flipBtn.disabled = false;
+                fullscreenBtn.disabled = false;
+                
+                // Mettre à jour aussi le bouton fullscreen si en mode fullscreen
+                const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
+                if (fullscreenRecordBtn) {
+                    fullscreenRecordBtn.innerHTML = '⏺️';
+                    fullscreenRecordBtn.classList.remove('recording');
+                }
 
                 updateStatus('🔄 Traitement de la vidéo...');
             }
