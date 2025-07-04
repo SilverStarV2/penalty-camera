@@ -1146,4 +1146,308 @@
                     return;
                 }
 
-                // Le reste sera géré dans l'event listener fullscreenchange
+            } catch (error) {
+                console.log('Fullscreen API non disponible, utilisation du fallback');
+                fallbackFullscreen();
+            }
+        }
+
+        // Mode fullscreen de fallback
+        function fallbackFullscreen() {
+            isFullscreen = true;
+            
+            // Ajouter la classe fullscreen
+            videoContainer.classList.add('fullscreen-mode');
+            
+            // Créer l'interface fullscreen
+            createFullscreenInterface();
+            
+            // Masquer le body scroll
+            document.body.style.overflow = 'hidden';
+            
+            // Mettre à jour le bouton principal
+            fullscreenBtn.textContent = '🔲 Quitter FS';
+            
+            updateStatus('📱 Mode plein écran activé !');
+        }
+
+        // Créer l'interface fullscreen
+        function createFullscreenInterface() {
+            // Créer les contrôles fullscreen
+            const fullscreenControls = document.createElement('div');
+            fullscreenControls.className = 'fullscreen-controls';
+            fullscreenControls.id = 'fullscreenControls';
+            
+            fullscreenControls.innerHTML = `
+                <button class="fullscreen-btn" onclick="flipCamera()">🔄</button>
+                <button class="fullscreen-btn record" id="fullscreenRecordBtn" onclick="toggleRecording()">●</button>
+            `;
+            
+            // Bouton sortir du fullscreen
+            const exitBtn = document.createElement('button');
+            exitBtn.className = 'fullscreen-exit';
+            exitBtn.textContent = '✕ Sortir';
+            exitBtn.onclick = exitFullscreen;
+            
+            // Ajouter les éléments
+            videoContainer.appendChild(fullscreenControls);
+            videoContainer.appendChild(exitBtn);
+        }
+
+        // Sortir du mode plein écran
+        function exitFullscreen() {
+            try {
+                if (document.fullscreenElement || document.webkitFullscreenElement || 
+                    document.mozFullScreenElement || document.msFullscreenElement) {
+                    // Sortir du vrai fullscreen
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                } else {
+                    // Sortir du mode fallback
+                    cleanupFullscreen();
+                }
+            } catch (error) {
+                cleanupFullscreen();
+            }
+        }
+
+        // Nettoyer l'interface fullscreen
+        function cleanupFullscreen() {
+            isFullscreen = false;
+            
+            if (alignmentDetectionActive) {
+                toggleAlignmentDetection();
+            }
+            
+            // Supprimer la classe fullscreen
+            videoContainer.classList.remove('fullscreen-mode');
+            
+            // Supprimer les contrôles fullscreen
+            const fullscreenControls = document.getElementById('fullscreenControls');
+            const exitBtn = videoContainer.querySelector('.fullscreen-exit');
+            
+            if (fullscreenControls) fullscreenControls.remove();
+            if (exitBtn) exitBtn.remove();
+            
+            // Restaurer le body scroll
+            document.body.style.overflow = '';
+            
+            // Mettre à jour le bouton principal
+            fullscreenBtn.textContent = '🔳 Plein Écran';
+            
+            updateStatus('📱 Mode normal restauré');
+        }
+
+        // Event listeners pour le fullscreen natif
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        function handleFullscreenChange() {
+            if (document.fullscreenElement || document.webkitFullscreenElement || 
+                document.mozFullScreenElement || document.msFullscreenElement) {
+                // Entré en fullscreen
+                isFullscreen = true;
+                createFullscreenInterface();
+                fullscreenBtn.textContent = '🔲 Quitter FS';
+                updateStatus('📱 Mode plein écran activé - Barres Safari masquées !');
+            } else {
+                // Sorti du fullscreen
+                cleanupFullscreen();
+            }
+        }
+
+        async function flipCamera() {
+            facingMode = facingMode === 'environment' ? 'user' : 'environment';
+            await startCamera();
+        }
+
+        // Basculer l'enregistrement
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        // Démarrer l'enregistrement
+        function startRecording() {
+            try {
+                if (!stream) {
+                    updateStatus('❌ Aucun stream caméra disponible');
+                    return;
+                }
+
+                recordedChunks = [];
+                
+                console.log('🎥 Création MediaRecorder sans mimeType');
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                        console.log('📦 Chunk:', event.data.size, 'bytes');
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    console.log('⏹️ Arrêt, chunks:', recordedChunks.length);
+                    createDownloadLink();
+                };
+
+                mediaRecorder.onerror = (event) => {
+                    console.error('💥 Erreur:', event.error);
+                    updateStatus(`❌ Erreur: ${event.error.message}`);
+                    isRecording = false;
+                    updateRecordingInterface(false);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                updateRecordingInterface(true);
+                updateStatus('🔴 Enregistrement...');
+
+            } catch (error) {
+                console.error('💥 Erreur:', error);
+                updateStatus(`❌ Erreur: ${error.message}`);
+            }
+        }
+
+        // Fonction pour mettre à jour l'interface d'enregistrement
+        function updateRecordingInterface(recording) {
+            if (recording) {
+                recordBtn.innerHTML = 'Arrêter';
+                recordBtn.className = 'btn btn-success';
+                recordingIndicator.classList.add('active');
+                flipBtn.disabled = true;
+                fullscreenBtn.disabled = true;
+                
+                const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
+                if (fullscreenRecordBtn) {
+                    fullscreenRecordBtn.innerHTML = '■';
+                }
+            } else {
+                recordBtn.innerHTML = 'Enregistrer';
+                recordBtn.className = 'btn btn-success';
+                recordingIndicator.classList.remove('active');
+                flipBtn.disabled = false;
+                fullscreenBtn.disabled = false;
+                
+                const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
+                if (fullscreenRecordBtn) {
+                    fullscreenRecordBtn.innerHTML = '●';
+                }
+            }
+        }
+
+        // Arrêter l'enregistrement
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                console.log('🛑 Arrêt de l\'enregistrement...');
+                
+                try {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    updateRecordingInterface(false);
+                    updateStatus('🔄 Traitement de la vidéo...');
+                } catch (error) {
+                    console.error('Erreur lors de l\'arrêt:', error);
+                    updateStatus('❌ Erreur lors de l\'arrêt de l\'enregistrement');
+                    isRecording = false;
+                    updateRecordingInterface(false);
+                }
+            }
+        }
+
+        // Créer le lien de téléchargement
+        function createDownloadLink() {
+            if (recordedChunks.length === 0) {
+                updateStatus('❌ Aucune donnée enregistrée');
+                return;
+            }
+
+            let mimeType = 'video/webm';
+            let fileExtension = 'webm';
+            
+            if (recordedChunks[0] && recordedChunks[0].type) {
+                mimeType = recordedChunks[0].type;
+                console.log('Type MIME détecté:', mimeType);
+                
+                if (mimeType.includes('mp4')) {
+                    fileExtension = 'mp4';
+                } else if (mimeType.includes('webm')) {
+                    fileExtension = 'webm';
+                } else if (mimeType.includes('ogg')) {
+                    fileExtension = 'ogv';
+                }
+            }
+            
+            const blob = new Blob(recordedChunks, { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+            
+            console.log(`Blob créé: ${sizeMB}MB, type: ${mimeType}, extension: ${fileExtension}`);
+
+            downloadBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `penalty_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${fileExtension}`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                updateStatus(`✅ Téléchargement lancé ! Vidéo sauvée en .${fileExtension}`);
+            };
+
+            downloadBtn.classList.remove('hidden');
+            updateStatus(`✅ Vidéo prête (${sizeMB} MB, .${fileExtension}) ! Cliquez sur Télécharger`);
+        }
+
+        // Télécharger la vidéo
+        function downloadVideo() {
+            downloadBtn.onclick();
+        }
+
+        // Basculer l'overlay
+        overlayToggle.addEventListener('click', () => {
+            overlayVisible = !overlayVisible;
+            goalOverlay.style.display = overlayVisible ? 'block' : 'none';
+            overlayToggle.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
+        });
+
+        // Event listener pour la détection d'alignement
+        alignmentDetector.addEventListener('click', toggleAlignmentDetection);
+
+        // Vérifications de base
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                updateStatus('❌ Caméra non supportée');
+                return;
+            }
+            if (!window.MediaRecorder) {
+                updateStatus('❌ Enregistrement non supporté');
+                return;
+            }
+            updateStatus('📱 Prêt à filmer !');
+        });
+
+        // Empêcher la mise en veille
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen').catch(() => {
+                console.log('Wake lock non disponible');
+            });
+        }
+    </script>
+</body>
+</html>
