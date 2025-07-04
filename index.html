@@ -136,7 +136,7 @@
             left: 50%;
             transform: translateX(-50%);
             width: 59vw;
-            height: calc(59vw / 3 - 1vw);
+            height: calc(59vw / 2.998 - 1vw);  /* Ratio FIFA exact */
         }
 
         /* Barre transversale du petit U */
@@ -649,12 +649,12 @@
             /* Mobile portrait - garde les % */
             .goal-frame {
                 width: 61vw;
-                height: calc(61vw / 3);
+                height: calc(61vw / 2.998);
             }
             
             .goal-frame .small-u {
                 width: 59vw;
-                height: calc(59vw / 3 - 1vw);
+                height: calc(59vw / 2.998 - 1vw);
             }
             
             .goal-frame .left-connection {
@@ -701,12 +701,12 @@
             /* OVERLAY EN PAYSAGE - garde les % pour les 2 U */
             .goal-frame {
                 width: 61vw !important;
-                height: calc(61vw / 3) !important;
+                height: calc(61vw / 2.998) !important;
             }
             
             .goal-frame .small-u {
                 width: 59vw !important;
-                height: calc(59vw / 3 - 1vw) !important;
+                height: calc(59vw / 2.998 - 1vw) !important;
             }
             
             .goal-frame .left-connection {
@@ -890,7 +890,7 @@
             }
         }
 
-        // DÉTECTION HYBRIDE AMÉLIORÉE - COMBINAISON DE PLUSIEURS TECHNIQUES
+        // DÉTECTION HYBRIDE SPÉCIALISÉE CAGES DE FOOT - ANTI FAUX POSITIFS
         function detectGoalAlignment() {
             if (!camera.videoWidth || !camera.videoHeight) return 0;
 
@@ -906,20 +906,282 @@
             const overlayWidth = Math.floor(detectionCanvas.width * 0.35);
             const overlayHeight = Math.floor(detectionCanvas.height * 0.15);
             
-            // DÉTECTION HYBRIDE - Combiner plusieurs techniques
-            const scores = {
-                edges: detectStrongEdges(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.3,
-                colors: detectGoalColors(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.2,
-                geometry: detectRectangularShape(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.3,
+            // PHASE 1 : Détection de base
+            const baseScores = {
+                edges: detectStrongEdges(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.25,
+                colors: detectGoalColors(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.15,
+                geometry: detectRectangularShape(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.25,
                 symmetry: checkSymmetry(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.1,
                 contrast: analyzeContrast(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.1
             };
             
-            const finalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+            const baseScore = Object.values(baseScores).reduce((a, b) => a + b, 0);
             
-            console.log(`🎯 Hybrid Detection - Edges: ${scores.edges.toFixed(2)} | Colors: ${scores.colors.toFixed(2)} | Geometry: ${scores.geometry.toFixed(2)} | Symmetry: ${scores.symmetry.toFixed(2)} | Contrast: ${scores.contrast.toFixed(2)} | Final: ${finalScore.toFixed(2)}`);
+            // PHASE 2 : Filtres spécifiques aux cages (anti faux positifs)
+            const goalSpecificScores = {
+                ratioCheck: checkGoalRatio(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.05,
+                verticalPosts: detectVerticalPosts(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.05,
+                horizontalBar: detectHorizontalBar(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.03,
+                backgroundContext: analyzeBackground(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.02
+            };
+            
+            const goalSpecificScore = Object.values(goalSpecificScores).reduce((a, b) => a + b, 0);
+            
+            // PHASE 3 : Filtres négatifs (ce qui n'est PAS une cage)
+            const negativeFilters = {
+                tooRegular: detectTooRegularPattern(imageData, centerX, centerY, overlayWidth, overlayHeight),
+                indoorObject: detectIndoorObject(imageData, centerX, centerY, overlayWidth, overlayHeight),
+                wrongSize: detectWrongSize(imageData, centerX, centerY, overlayWidth, overlayHeight),
+                noGrassContext: detectNoGrassContext(imageData, centerX, centerY, overlayWidth, overlayHeight)
+            };
+            
+            // Pénalités pour les faux positifs
+            let penalty = 0;
+            Object.values(negativeFilters).forEach(filter => {
+                if (filter > 0.5) penalty += 0.3; // Pénalité forte
+            });
+            
+            const finalScore = Math.max(0, baseScore + goalSpecificScore - penalty);
+            
+            console.log(`🎯 Base: ${baseScore.toFixed(2)} | Goal: ${goalSpecificScore.toFixed(2)} | Penalty: ${penalty.toFixed(2)} | Final: ${finalScore.toFixed(2)}`);
             
             return finalScore;
+        }
+
+        // FILTRE 1 : Vérifier les proportions exactes d'une cage FIFA
+        function checkGoalRatio(imageData, centerX, centerY, width, height) {
+            // Une vraie cage a un ratio largeur/hauteur de 2.998:1 (7.32m / 2.44m)
+            const detectedRatio = width / height;
+            const idealRatio = 2.998;
+            const ratioError = Math.abs(detectedRatio - idealRatio) / idealRatio;
+            
+            // Plus le ratio est proche de 2.998:1, meilleur c'est
+            return ratioError < 0.2 ? (1 - ratioError * 5) : 0;
+        }
+
+        // FILTRE 2 : Détecter les poteaux verticaux spécifiques
+        function detectVerticalPosts(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            let leftPostStrength = 0;
+            let rightPostStrength = 0;
+            
+            const startX = Math.max(0, centerX - width/2);
+            const endX = Math.min(canvasWidth, centerX + width/2);
+            const startY = Math.max(0, centerY - height/2);
+            const endY = Math.min(imageData.height, centerY + height/2);
+            
+            // Analyser les zones des poteaux (bords gauche et droit)
+            for (let y = startY; y < endY; y += 2) {
+                // Poteau gauche
+                if (startX >= 0 && startX < canvasWidth) {
+                    const i = (y * canvasWidth + startX) * 4;
+                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    
+                    // Chercher un objet clair vertical
+                    if (current > 120) leftPostStrength++;
+                }
+                
+                // Poteau droit
+                if (endX-1 >= 0 && endX-1 < canvasWidth) {
+                    const i = (y * canvasWidth + (endX-1)) * 4;
+                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    
+                    if (current > 120) rightPostStrength++;
+                }
+            }
+            
+            const totalHeight = endY - startY;
+            const leftRatio = leftPostStrength / (totalHeight / 2);
+            const rightRatio = rightPostStrength / (totalHeight / 2);
+            
+            // Les deux poteaux doivent être détectés
+            return Math.min(leftRatio, rightRatio);
+        }
+
+        // FILTRE 3 : Détecter la barre horizontale du haut
+        function detectHorizontalBar(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            let barStrength = 0;
+            const startX = Math.max(0, centerX - width/2);
+            const endX = Math.min(canvasWidth, centerX + width/2);
+            const barY = Math.max(0, centerY - height/2);
+            
+            // Analyser la ligne du haut
+            for (let x = startX; x < endX; x += 2) {
+                if (x >= 0 && x < canvasWidth && barY >= 0 && barY < imageData.height) {
+                    const i = (barY * canvasWidth + x) * 4;
+                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    
+                    if (current > 120) barStrength++;
+                }
+            }
+            
+            const totalWidth = endX - startX;
+            return barStrength / (totalWidth / 2);
+        }
+
+        // FILTRE 4 : Analyser le contexte (herbe, ciel, terrain)
+        function analyzeBackground(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            let grassPixels = 0;
+            let skyPixels = 0;
+            let totalPixels = 0;
+            
+            // Zone élargie autour de la cage
+            const expandedWidth = width * 1.5;
+            const expandedHeight = height * 1.5;
+            const startX = Math.max(0, centerX - expandedWidth/2);
+            const endX = Math.min(canvasWidth, centerX + expandedWidth/2);
+            const startY = Math.max(0, centerY - expandedHeight/2);
+            const endY = Math.min(imageData.height, centerY + expandedHeight/2);
+            
+            for (let y = startY; y < endY; y += 4) {
+                for (let x = startX; x < endX; x += 4) {
+                    const i = (y * canvasWidth + x) * 4;
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // Détecter herbe (vert dominant)
+                    if (g > r && g > b && g > 80) {
+                        grassPixels++;
+                    }
+                    
+                    // Détecter ciel (bleu ou blanc/gris clair)
+                    if ((b > r && b > g) || (r > 180 && g > 180 && b > 180)) {
+                        skyPixels++;
+                    }
+                    
+                    totalPixels++;
+                }
+            }
+            
+            const grassRatio = grassPixels / totalPixels;
+            const skyRatio = skyPixels / totalPixels;
+            
+            // Un bon contexte de cage = herbe + ciel
+            return (grassRatio + skyRatio) > 0.3 ? 1 : 0;
+        }
+
+        // ANTI-FILTRE 1 : Détecter un motif trop régulier (fenêtre, porte)
+        function detectTooRegularPattern(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            let uniformityScore = 0;
+            let previousBrightness = -1;
+            let totalChecks = 0;
+            
+            const startX = Math.max(0, centerX - width/2);
+            const endX = Math.min(canvasWidth, centerX + width/2);
+            const startY = Math.max(0, centerY - height/2);
+            const endY = Math.min(imageData.height, centerY + height/2);
+            
+            // Vérifier l'uniformité (trop régulier = pas une cage)
+            for (let y = startY; y < endY; y += 5) {
+                for (let x = startX; x < endX; x += 5) {
+                    const i = (y * canvasWidth + x) * 4;
+                    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    
+                    if (previousBrightness >= 0) {
+                        const diff = Math.abs(brightness - previousBrightness);
+                        if (diff < 10) uniformityScore++; // Trop uniforme
+                    }
+                    
+                    previousBrightness = brightness;
+                    totalChecks++;
+                }
+            }
+            
+            return totalChecks > 0 ? uniformityScore / totalChecks : 0;
+        }
+
+        // ANTI-FILTRE 2 : Détecter un objet d'intérieur
+        function detectIndoorObject(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            // Chercher des couleurs typiques d'intérieur
+            let indoorColorCount = 0;
+            let totalPixels = 0;
+            
+            const startX = Math.max(0, centerX - width/2);
+            const endX = Math.min(canvasWidth, centerX + width/2);
+            const startY = Math.max(0, centerY - height/2);
+            const endY = Math.min(imageData.height, centerY + height/2);
+            
+            for (let y = startY; y < endY; y += 3) {
+                for (let x = startX; x < endX; x += 3) {
+                    const i = (y * canvasWidth + x) * 4;
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // Couleurs typiques d'intérieur (beige, marron, couleurs chaudes)
+                    const isBeige = r > 150 && g > 130 && b > 100 && Math.abs(r - g) < 50;
+                    const isBrown = r > 100 && g > 70 && b < 80;
+                    
+                    if (isBeige || isBrown) {
+                        indoorColorCount++;
+                    }
+                    totalPixels++;
+                }
+            }
+            
+            return totalPixels > 0 ? indoorColorCount / totalPixels : 0;
+        }
+
+        // ANTI-FILTRE 3 : Détecter une taille incorrecte
+        function detectWrongSize(imageData, centerX, centerY, width, height) {
+            // Une cage trop petite ou trop grande dans l'image
+            const imageArea = imageData.width * imageData.height;
+            const detectionArea = width * height;
+            const ratio = detectionArea / imageArea;
+            
+            // Une cage doit occuper entre 5% et 60% de l'image
+            if (ratio < 0.05 || ratio > 0.6) {
+                return 1; // Taille incorrecte
+            }
+            return 0;
+        }
+
+        // ANTI-FILTRE 4 : Pas de contexte d'herbe
+        function detectNoGrassContext(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            let grassPixels = 0;
+            let totalPixels = 0;
+            
+            // Analyser la partie basse de l'image (là où il devrait y avoir de l'herbe)
+            const grassY = Math.min(imageData.height, centerY + height);
+            const grassEndY = Math.min(imageData.height, grassY + height);
+            
+            for (let y = grassY; y < grassEndY; y += 3) {
+                for (let x = 0; x < canvasWidth; x += 5) {
+                    const i = (y * canvasWidth + x) * 4;
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // Herbe = vert dominant
+                    if (g > r && g > b && g > 60) {
+                        grassPixels++;
+                    }
+                    totalPixels++;
+                }
+            }
+            
+            const grassRatio = totalPixels > 0 ? grassPixels / totalPixels : 0;
+            
+            // Pas assez d'herbe = probablement pas un terrain
+            return grassRatio < 0.1 ? 1 : 0;
         }
 
         // 1. DÉTECTION DES CONTOURS FORTS
@@ -1153,15 +1415,15 @@
                     // Supprimer les classes précédentes
                     goalFrame.classList.remove('aligned', 'partial');
                     
-                    // Seuils adaptés pour la détection hybride
-                    if (confidence > 0.5) {
+                    // Seuils plus stricts pour éviter les faux positifs
+                    if (confidence > 0.6) {
                         goalFrame.classList.add('aligned');
-                        updateStatus('✅ PARFAIT ! Cage parfaitement alignée dans le contour');
-                    } else if (confidence > 0.25) {
+                        updateStatus('✅ CAGE DE FOOT détectée ! Alignement parfait');
+                    } else if (confidence > 0.35) {
                         goalFrame.classList.add('partial');
-                        updateStatus('🟠 Cage détectée - Ajustez l\'alignement');
+                        updateStatus('🟠 Possible cage détectée - Vérifiez l\'alignement');
                     } else {
-                        updateStatus('🔍 Pointez vers une cage de football...');
+                        updateStatus('🔍 Recherche d\'une cage de football...');
                     }
                 }, 300);
                 
