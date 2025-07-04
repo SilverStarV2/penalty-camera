@@ -2,9 +2,11 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-touch-fullscreen" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Penalty Camera Pro</title>
     <style>
         * {
@@ -235,6 +237,17 @@
             z-index: 10002;  /* Au-dessus de tout */
         }
 
+        /* Mode immersif pour Safari iOS */
+        body.immersive-mode {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+        }
+
+        /* Fullscreen mode amélioré */
         .fullscreen-mode {
             position: fixed !important;
             top: 0 !important;
@@ -248,8 +261,8 @@
         }
 
         .fullscreen-mode #camera {
-            width: 100% !important;
-            height: 100% !important;
+            width: 100vw !important;
+            height: 100vh !important;
             object-fit: cover !important;
         }
 
@@ -709,42 +722,57 @@
             }
         }
 
-        // Entrer en mode plein écran
+        // Entrer en mode plein écran - Solution Safari iOS
         function enterFullscreen() {
             try {
-                // Forcer l'utilisation de l'API fullscreen native pour masquer Safari
+                // Solution 1: Essayer l'API fullscreen standard
                 if (videoContainer.requestFullscreen) {
                     videoContainer.requestFullscreen();
-                } else if (videoContainer.webkitRequestFullscreen) {
-                    // Safari - utiliser webkitRequestFullscreen avec options
-                    videoContainer.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-                } else if (videoContainer.mozRequestFullScreen) {
-                    videoContainer.mozRequestFullScreen();
-                } else if (videoContainer.msRequestFullscreen) {
-                    videoContainer.msRequestFullscreen();
-                } else {
-                    // Fallback seulement si vraiment pas d'autre choix
-                    fallbackFullscreen();
                     return;
                 }
                 
-                // Ne pas créer l'interface tout de suite, 
-                // attendre l'event fullscreenchange
+                // Solution 2: Safari iOS - webkitRequestFullscreen
+                if (videoContainer.webkitRequestFullscreen) {
+                    videoContainer.webkitRequestFullscreen();
+                    return;
+                }
+                
+                // Solution 3: Fallback - mode immersif CSS
+                enterImmersiveMode();
                 
             } catch (error) {
-                console.log('API Fullscreen échouée, fallback:', error);
-                fallbackFullscreen();
+                console.log('Fullscreen API échouée, mode immersif:', error);
+                enterImmersiveMode();
             }
         }
 
-        // Mode fullscreen de fallback (seulement si API native échoue)
-        function fallbackFullscreen() {
+        // Mode immersif pour Safari iOS (quand fullscreen API ne marche pas)
+        function enterImmersiveMode() {
             isFullscreen = true;
+            
+            // Masquer la barre d'adresse Safari en scrollant
+            window.scrollTo(0, 1);
+            
+            // Ajouter les classes CSS
+            document.body.classList.add('immersive-mode');
             videoContainer.classList.add('fullscreen-mode');
-            createFullscreenInterface();
+            
+            // Masquer le scroll
             document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            
+            // Forcer la hauteur viewport
+            document.body.style.height = '100vh';
+            document.documentElement.style.height = '100vh';
+            
+            createFullscreenInterface();
             fullscreenBtn.textContent = 'Quitter FS';
-            updateStatus('Mode plein écran activé (fallback)');
+            updateStatus('Mode immersif activé');
+            
+            // Essayer de masquer la barre d'adresse après un délai
+            setTimeout(() => {
+                window.scrollTo(0, 1);
+            }, 100);
         }
 
         // Créer l'interface fullscreen
@@ -800,15 +828,23 @@
                 toggleAlignmentDetection();
             }
             
+            // Nettoyer les classes CSS
+            document.body.classList.remove('immersive-mode');
             videoContainer.classList.remove('fullscreen-mode');
             
+            // Restaurer le scroll
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.style.height = '';
+            document.documentElement.style.height = '';
+            
+            // Supprimer les éléments fullscreen
             const fullscreenControls = document.getElementById('fullscreenControls');
             const exitBtn = videoContainer.querySelector('.fullscreen-exit');
             
             if (fullscreenControls) fullscreenControls.remove();
             if (exitBtn) exitBtn.remove();
             
-            document.body.style.overflow = '';
             fullscreenBtn.textContent = 'Plein Écran';
             updateStatus('Mode normal restauré');
         }
