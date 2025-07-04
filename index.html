@@ -890,7 +890,7 @@
             }
         }
 
-        // DÉTECTION PRÉCISE DANS L'OVERLAY - ZONE ENTRE LES 2 U
+        // DÉTECTION HYBRIDE SPÉCIALISÉE CAGES DE FOOT - ANTI FAUX POSITIFS
         function detectGoalAlignment() {
             if (!camera.videoWidth || !camera.videoHeight) return 0;
 
@@ -900,188 +900,52 @@
             // Obtenir les données d'image
             const imageData = ctx.getImageData(0, 0, detectionCanvas.width, detectionCanvas.height);
             
-            // Dimensions exactes des overlays
+            // Zone de détection correspondant exactement au contour de l'overlay
             const centerX = Math.floor(detectionCanvas.width / 2);
             const centerY = Math.floor(detectionCanvas.height / 2);
+            const overlayWidth = Math.floor(detectionCanvas.width * 0.35);
+            const overlayHeight = Math.floor(detectionCanvas.height * 0.15);
             
-            // Calculer les zones exactes des overlays
-            const largeUWidth = Math.floor(detectionCanvas.width * 0.61); // 61vw
-            const largeUHeight = Math.floor(largeUWidth / 2.998);
-            const smallUWidth = Math.floor(detectionCanvas.width * 0.59); // 59vw  
-            const smallUHeight = Math.floor(smallUWidth / 2.998);
-            const smallUTop = Math.floor(detectionCanvas.width * 0.01); // 1vw offset
+            // PHASE 1 : Détection de base
+            const baseScores = {
+                edges: detectStrongEdges(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.25,
+                colors: detectGoalColors(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.15,
+                geometry: detectRectangularShape(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.25,
+                symmetry: checkSymmetry(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.1,
+                contrast: analyzeContrast(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.1
+            };
             
-            // ZONE DE DÉTECTION 1 : Espace entre les barres horizontales
-            const topBarScore = detectInHorizontalGap(imageData, centerX, centerY, largeUWidth, smallUWidth, smallUTop);
+            const baseScore = Object.values(baseScores).reduce((a, b) => a + b, 0);
             
-            // ZONE DE DÉTECTION 2 : Espaces latéraux entre les poteaux
-            const leftGapScore = detectInLeftGap(imageData, centerX, centerY, largeUWidth, smallUWidth, largeUHeight, smallUHeight, smallUTop);
-            const rightGapScore = detectInRightGap(imageData, centerX, centerY, largeUWidth, smallUWidth, largeUHeight, smallUHeight, smallUTop);
+            // PHASE 2 : Filtres spécifiques aux cages (anti faux positifs)
+            const goalSpecificScores = {
+                ratioCheck: checkGoalRatio(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.05,
+                verticalPosts: detectVerticalPosts(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.05,
+                horizontalBar: detectHorizontalBar(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.03,
+                backgroundContext: analyzeBackground(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.02
+            };
             
-            // ZONE DE DÉTECTION 3 : Intérieur du petit U (doit être vide/fond)
-            const innerScore = detectInnerArea(imageData, centerX, centerY, smallUWidth, smallUHeight, smallUTop);
+            const goalSpecificScore = Object.values(goalSpecificScores).reduce((a, b) => a + b, 0);
             
-            // Score final pondéré
-            const finalScore = (topBarScore * 0.4 + (leftGapScore + rightGapScore) * 0.25 + innerScore * 0.1);
+            // PHASE 3 : Filtres négatifs (ce qui n'est PAS une cage)
+            const negativeFilters = {
+                tooRegular: detectTooRegularPattern(imageData, centerX, centerY, overlayWidth, overlayHeight),
+                indoorObject: detectIndoorObject(imageData, centerX, centerY, overlayWidth, overlayHeight),
+                wrongSize: detectWrongSize(imageData, centerX, centerY, overlayWidth, overlayHeight),
+                noGrassContext: detectNoGrassContext(imageData, centerX, centerY, overlayWidth, overlayHeight)
+            };
             
-            console.log(`🎯 TopBar: ${topBarScore.toFixed(2)} | Left: ${leftGapScore.toFixed(2)} | Right: ${rightGapScore.toFixed(2)} | Inner: ${innerScore.toFixed(2)} | Final: ${finalScore.toFixed(2)}`);
+            // Pénalités pour les faux positifs
+            let penalty = 0;
+            Object.values(negativeFilters).forEach(filter => {
+                if (filter > 0.5) penalty += 0.3; // Pénalité forte
+            });
+            
+            const finalScore = Math.max(0, baseScore + goalSpecificScore - penalty);
+            
+            console.log(`🎯 Base: ${baseScore.toFixed(2)} | Goal: ${goalSpecificScore.toFixed(2)} | Penalty: ${penalty.toFixed(2)} | Final: ${finalScore.toFixed(2)}`);
             
             return finalScore;
-        }
-
-        // ZONE 1 : Détecter pixels blancs/gris entre les barres horizontales
-        function detectInHorizontalGap(imageData, centerX, centerY, largeWidth, smallWidth, smallTop) {
-            const data = imageData.data;
-            const canvasWidth = imageData.width;
-            
-            let whiteGrayPixels = 0;
-            let totalPixels = 0;
-            
-            // Zone entre la barre du grand U et celle du petit U
-            const gapStartX = centerX - smallWidth/2;
-            const gapEndX = centerX + smallWidth/2;
-            const gapStartY = centerY - largeWidth/(2*2.998); // Top du grand U
-            const gapEndY = centerY - largeWidth/(2*2.998) + smallTop; // Top du petit U
-            
-            for (let y = Math.max(0, gapStartY); y < Math.min(imageData.height, gapEndY); y += 1) {
-                for (let x = Math.max(0, gapStartX); x < Math.min(canvasWidth, gapEndX); x += 2) {
-                    const i = (Math.floor(y) * canvasWidth + Math.floor(x)) * 4;
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    
-                    // Détecter blanc/gris/métal de cage
-                    const brightness = (r + g + b) / 3;
-                    const isWhite = r > 200 && g > 200 && b > 200;
-                    const isGray = Math.abs(r - g) < 40 && Math.abs(g - b) < 40 && brightness > 120 && brightness < 200;
-                    const isMetal = Math.abs(r - g) < 30 && Math.abs(g - b) < 30 && brightness > 100;
-                    
-                    if (isWhite || isGray || isMetal) {
-                        whiteGrayPixels++;
-                    }
-                    totalPixels++;
-                }
-            }
-            
-            return totalPixels > 0 ? Math.min(whiteGrayPixels / (totalPixels * 0.3), 1) : 0;
-        }
-
-        // ZONE 2A : Détecter dans l'espace gauche entre les poteaux
-        function detectInLeftGap(imageData, centerX, centerY, largeWidth, smallWidth, largeHeight, smallHeight, smallTop) {
-            const data = imageData.data;
-            const canvasWidth = imageData.width;
-            
-            let whiteGrayPixels = 0;
-            let totalPixels = 0;
-            
-            // Espace entre poteau gauche grand U et poteau gauche petit U
-            const largeLeftX = centerX - largeWidth/2;
-            const smallLeftX = centerX - smallWidth/2;
-            const topY = centerY - largeHeight/2;
-            const bottomY = centerY + largeHeight/2;
-            
-            for (let y = Math.max(0, topY + smallTop); y < Math.min(imageData.height, topY + smallTop + smallHeight); y += 2) {
-                for (let x = Math.max(0, largeLeftX + 4); x < Math.min(canvasWidth, smallLeftX - 4); x += 2) {
-                    const i = (Math.floor(y) * canvasWidth + Math.floor(x)) * 4;
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    
-                    const brightness = (r + g + b) / 3;
-                    const isWhite = r > 200 && g > 200 && b > 200;
-                    const isGray = Math.abs(r - g) < 40 && Math.abs(g - b) < 40 && brightness > 120;
-                    
-                    if (isWhite || isGray) {
-                        whiteGrayPixels++;
-                    }
-                    totalPixels++;
-                }
-            }
-            
-            return totalPixels > 0 ? Math.min(whiteGrayPixels / (totalPixels * 0.4), 1) : 0;
-        }
-
-        // ZONE 2B : Détecter dans l'espace droit entre les poteaux
-        function detectInRightGap(imageData, centerX, centerY, largeWidth, smallWidth, largeHeight, smallHeight, smallTop) {
-            const data = imageData.data;
-            const canvasWidth = imageData.width;
-            
-            let whiteGrayPixels = 0;
-            let totalPixels = 0;
-            
-            // Espace entre poteau droit petit U et poteau droit grand U
-            const smallRightX = centerX + smallWidth/2;
-            const largeRightX = centerX + largeWidth/2;
-            const topY = centerY - largeHeight/2;
-            
-            for (let y = Math.max(0, topY + smallTop); y < Math.min(imageData.height, topY + smallTop + smallHeight); y += 2) {
-                for (let x = Math.max(0, smallRightX + 4); x < Math.min(canvasWidth, largeRightX - 4); x += 2) {
-                    const i = (Math.floor(y) * canvasWidth + Math.floor(x)) * 4;
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    
-                    const brightness = (r + g + b) / 3;
-                    const isWhite = r > 200 && g > 200 && b > 200;
-                    const isGray = Math.abs(r - g) < 40 && Math.abs(g - b) < 40 && brightness > 120;
-                    
-                    if (isWhite || isGray) {
-                        whiteGrayPixels++;
-                    }
-                    totalPixels++;
-                }
-            }
-            
-            return totalPixels > 0 ? Math.min(whiteGrayPixels / (totalPixels * 0.4), 1) : 0;
-        }
-
-        // ZONE 3 : Vérifier que l'intérieur du petit U est cohérent (fond de cage)
-        function detectInnerArea(imageData, centerX, centerY, smallWidth, smallHeight, smallTop) {
-            const data = imageData.data;
-            const canvasWidth = imageData.width;
-            
-            let backgroundPixels = 0;
-            let brightPixels = 0;
-            let totalPixels = 0;
-            
-            // Intérieur du petit U
-            const innerStartX = centerX - smallWidth/2 + 10;
-            const innerEndX = centerX + smallWidth/2 - 10;
-            const innerStartY = centerY - smallWidth/(2*2.998) + smallTop + 5;
-            const innerEndY = centerY + smallWidth/(2*2.998) - 5;
-            
-            for (let y = Math.max(0, innerStartY); y < Math.min(imageData.height, innerEndY); y += 3) {
-                for (let x = Math.max(0, innerStartX); x < Math.min(canvasWidth, innerEndX); x += 3) {
-                    const i = (Math.floor(y) * canvasWidth + Math.floor(x)) * 4;
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    
-                    const brightness = (r + g + b) / 3;
-                    
-                    // L'intérieur devrait être du fond (herbe, ciel, filet)
-                    const isGrass = g > r && g > b && g > 80;
-                    const isSky = (b > r && b > g) || brightness > 180;
-                    const isNet = brightness > 150 && Math.abs(r - g) < 50;
-                    
-                    if (isGrass || isSky || isNet) {
-                        backgroundPixels++;
-                    }
-                    
-                    // Pas trop de pixels ultra-lumineux (éviter écrans/fenêtres)
-                    if (brightness > 220) {
-                        brightPixels++;
-                    }
-                    
-                    totalPixels++;
-                }
-            }
-            
-            const backgroundRatio = totalPixels > 0 ? backgroundPixels / totalPixels : 0;
-            const brightRatio = totalPixels > 0 ? brightPixels / totalPixels : 0;
-            
-            // Bon fond + pas trop de pixels ultra-lumineux
-            return backgroundRatio > 0.3 && brightRatio < 0.7 ? 1 : 0;
         }
 
         // FILTRE 1 : Vérifier les proportions exactes d'une cage FIFA
@@ -1551,15 +1415,15 @@
                     // Supprimer les classes précédentes
                     goalFrame.classList.remove('aligned', 'partial');
                     
-                    // Seuils plus stricts pour la détection précise
-                    if (confidence > 0.7) {
+                    // Seuils plus stricts pour éviter les faux positifs
+                    if (confidence > 0.6) {
                         goalFrame.classList.add('aligned');
-                        updateStatus('✅ CAGE PARFAITEMENT ALIGNÉE dans l\'overlay !');
-                    } else if (confidence > 0.4) {
+                        updateStatus('✅ CAGE DE FOOT détectée ! Alignement parfait');
+                    } else if (confidence > 0.35) {
                         goalFrame.classList.add('partial');
-                        updateStatus('🟠 Cage détectée - Centrez mieux dans l\'overlay');
+                        updateStatus('🟠 Possible cage détectée - Vérifiez l\'alignement');
                     } else {
-                        updateStatus('🔍 Alignez la cage dans les contours...');
+                        updateStatus('🔍 Recherche d\'une cage de football...');
                     }
                 }, 300);
                 
