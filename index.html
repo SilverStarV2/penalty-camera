@@ -211,7 +211,7 @@
 
         .alignment-detector {
             position: absolute;
-            bottom: 60px;
+            bottom: 120px;  /* Plus haut pour éviter les boutons */
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.8);
@@ -221,12 +221,18 @@
             border-radius: 20px;
             font-size: 12px;
             cursor: pointer;
-            z-index: 15;
+            z-index: 20;  /* Z-index plus élevé */
         }
 
         .alignment-detector.active {
             background: rgba(0, 255, 0, 0.8);
             color: black;
+        }
+
+        /* En fullscreen, positionner encore plus haut */
+        .fullscreen-mode .alignment-detector {
+            bottom: 150px;
+            z-index: 10002;  /* Au-dessus de tout */
         }
 
         .fullscreen-mode {
@@ -723,14 +729,11 @@
             exitBtn.textContent = '✕ Sortir';
             exitBtn.onclick = exitFullscreen;
             
-            const overlayToggleFs = document.createElement('button');
-            overlayToggleFs.className = 'fullscreen-overlay-toggle';
-            overlayToggleFs.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
-            overlayToggleFs.onclick = toggleOverlay;
+            // NE PAS créer un nouveau bouton overlay, utiliser celui existant
+            // qui est déjà dans le DOM
             
             videoContainer.appendChild(fullscreenControls);
             videoContainer.appendChild(exitBtn);
-            videoContainer.appendChild(overlayToggleFs);
         }
 
         // Sortir du mode plein écran
@@ -767,11 +770,9 @@
             
             const fullscreenControls = document.getElementById('fullscreenControls');
             const exitBtn = videoContainer.querySelector('.fullscreen-exit');
-            const overlayToggleFs = videoContainer.querySelector('.fullscreen-overlay-toggle');
             
             if (fullscreenControls) fullscreenControls.remove();
             if (exitBtn) exitBtn.remove();
-            if (overlayToggleFs) overlayToggleFs.remove();
             
             document.body.style.overflow = '';
             fullscreenBtn.textContent = 'Plein Écran';
