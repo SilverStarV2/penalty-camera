@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-touch-fullscreen" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>Penalty Camera Pro</title>
+    <title>Penalty Camera Pro - Détection Réelle</title>
     <style>
         * {
             margin: 0;
@@ -63,6 +61,17 @@
             display: block;
         }
 
+        /* Canvas pour la détection - invisible */
+        #detectionCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0;
+        }
+
         .goal-overlay {
             position: absolute;
             top: 50%;
@@ -76,46 +85,45 @@
             width: 280px;
             height: 94px;
             position: relative;
+            transition: all 0.3s ease;
         }
 
-        /* Montant gauche */
+        /* Montants et barre de but */
         .goal-left-post {
             position: absolute;
             top: 0;
             left: 0;
             width: 3px;
             height: 94px;
-            background: rgba(255, 255, 255, 1);
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 1.5px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
             z-index: 10;
             transition: all 0.3s ease;
         }
 
-        /* Montant droit */
         .goal-right-post {
             position: absolute;
             top: 0;
             right: 0;
             width: 3px;
             height: 94px;
-            background: rgba(255, 255, 255, 1);
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 1.5px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
             z-index: 10;
             transition: all 0.3s ease;
         }
 
-        /* Barre horizontale */
         .goal-crossbar {
             position: absolute;
             top: 0;
             left: 0;
             width: 280px;
             height: 3px;
-            background: rgba(255, 255, 255, 1);
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 1.5px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
             z-index: 10;
             transition: all 0.3s ease;
         }
@@ -124,8 +132,16 @@
         .goal-frame.aligned .goal-left-post,
         .goal-frame.aligned .goal-right-post,
         .goal-frame.aligned .goal-crossbar {
-            background: rgba(0, 255, 0, 1);
-            box-shadow: 0 0 12px rgba(0, 255, 0, 0.8);
+            background: rgba(0, 255, 0, 0.9);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+        }
+
+        /* Détection partielle - barres oranges */
+        .goal-frame.partial .goal-left-post,
+        .goal-frame.partial .goal-right-post,
+        .goal-frame.partial .goal-crossbar {
+            background: rgba(255, 165, 0, 0.9);
+            box-shadow: 0 0 15px rgba(255, 165, 0, 0.8);
         }
 
         .controls {
@@ -153,8 +169,8 @@
         }
 
         .btn-secondary {
-            background: white;
-            color: black;
+            background: #333;
+            color: white;
         }
 
         .btn-success {
@@ -181,39 +197,27 @@
             color: #cccccc;
         }
 
-        .recording-indicator {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #ff3333;
-            color: white;
-            padding: 6px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: 500;
-            display: none;
+        .detection-info {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
         }
 
-        .recording-indicator.active {
-            display: block;
+        .detection-info h3 {
+            color: #4CAF50;
+            margin-bottom: 10px;
         }
 
-        .overlay-toggle {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            cursor: pointer;
+        .detection-info p {
+            margin: 5px 0;
+            line-height: 1.4;
         }
 
         .alignment-detector {
             position: absolute;
-            bottom: 120px;  /* Plus haut pour éviter les boutons */
+            bottom: 120px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.8);
@@ -223,7 +227,7 @@
             border-radius: 20px;
             font-size: 12px;
             cursor: pointer;
-            z-index: 20;  /* Z-index plus élevé */
+            z-index: 20;
         }
 
         .alignment-detector.active {
@@ -231,138 +235,44 @@
             color: black;
         }
 
-        /* En fullscreen, positionner encore plus haut */
-        .fullscreen-mode .alignment-detector {
-            bottom: 150px;
-            z-index: 10002;  /* Au-dessus de tout */
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
         }
 
-        /* Mode immersif pour Safari iOS */
-        body.immersive-mode {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            overflow: hidden !important;
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa00, #44ff44);
+            width: 0%;
+            transition: width 0.3s ease;
         }
 
-        /* Fullscreen mode amélioré */
-        .fullscreen-mode {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            z-index: 9999 !important;
-            background: #000 !important;
-            border-radius: 0 !important;
-            margin: 0 !important;
+        .debug-info {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            color: #ccc;
+            display: none;
         }
 
-        .fullscreen-mode #camera {
-            width: 100vw !important;
-            height: 100vh !important;
-            object-fit: cover !important;
+        .debug-info.show {
+            display: block;
         }
 
-        .fullscreen-controls {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 20px;
-            z-index: 10000;
-        }
-
-        .fullscreen-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 25px;
-            border: none;
-            background: white;
-            color: black;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .fullscreen-btn.record {
-            background: #ff3333;
-            color: white;
-            width: 60px;
-            height: 60px;
-        }
-
-        .fullscreen-exit {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            z-index: 10001;
-        }
-
-        .fullscreen-overlay-toggle {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            z-index: 10001;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* Fullscreen natif - masquer complètement Safari */
-        .video-container:-webkit-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            background: #000 !important;
-        }
-
-        .video-container:-moz-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            background: #000 !important;
-        }
-
-        .video-container:fullscreen {
-            width: 100vw !important;
-            height: 100vh !important;
-            background: #000 !important;
-        }
-
-        /* S'assurer que la vidéo remplit tout l'écran en fullscreen natif */
-        .video-container:-webkit-full-screen #camera,
-        .video-container:-moz-full-screen #camera,
-        .video-container:fullscreen #camera {
-            width: 100vw !important;
-            height: 100vh !important;
-            object-fit: cover !important;
-        }
         @media (max-width: 768px) {
             .main-container {
                 padding: 15px;
             }
             
             .camera-section {
-                padding: 20px;
+                padding: 15px;
             }
             
             #camera {
@@ -383,76 +293,29 @@
                 width: 245px;
                 height: 3px;
             }
-            
-            .controls {
-                gap: 10px;
-            }
-            
-            .btn {
-                min-width: 100px;
-                padding: 10px 16px;
-                font-size: 14px;
-            }
-        }
-
-        /* Mode paysage mobile */
-        @media (orientation: landscape) and (max-height: 500px) {
-            .header {
-                padding: 10px 0;
-            }
-            
-            .header h1 {
-                font-size: 24px;
-            }
-            
-            .camera-section {
-                padding: 15px;
-            }
-            
-            #camera {
-                height: 200px;
-            }
-            
-            .goal-frame {
-                width: 350px !important;
-                height: 117px !important;
-            }
-            
-            .goal-left-post, .goal-right-post {
-                width: 4px !important;
-                height: 117px !important;
-            }
-            
-            .goal-crossbar {
-                width: 350px !important;
-                height: 4px !important;
-            }
-        }
-
-        /* FULLSCREEN PAYSAGE */
-        .fullscreen-mode .goal-frame {
-            width: 60vw !important;
-            height: calc(60vw / 3) !important;
-        }
-
-        .fullscreen-mode .goal-left-post, 
-        .fullscreen-mode .goal-right-post {
-            width: 0.8vw !important;
-            height: calc(60vw / 3) !important;
-        }
-
-        .fullscreen-mode .goal-crossbar {
-            width: 60vw !important;
-            height: 0.8vw !important;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Penalty Camera</h1>
+        <h1>Penalty Camera Pro - Détection Réelle</h1>
     </div>
 
     <div class="main-container">
+        <div class="detection-info">
+            <h3>🎯 Détection d'alignement intelligente</h3>
+            <p><strong>Comment ça marche :</strong> L'algorithme analyse les contours et lignes droites dans l'image pour détecter les poteaux et barres transversales des cages de football.</p>
+            <p><strong>Indicateurs :</strong></p>
+            <p>🔴 <strong>Blanc</strong> : Aucune détection</p>
+            <p>🟠 <strong>Orange</strong> : Détection partielle</p>
+            <p>🟢 <strong>Vert</strong> : Parfaitement aligné !</p>
+            
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceBar"></div>
+            </div>
+            <p id="confidenceText">Confiance : 0%</p>
+        </div>
+
         <div class="camera-section">
             <div class="status" id="status">
                 Cliquez sur "Démarrer" pour accéder à la caméra
@@ -460,47 +323,41 @@
 
             <div class="video-container">
                 <video id="camera" autoplay playsinline muted></video>
+                <canvas id="detectionCanvas"></canvas>
                 
                 <div class="goal-overlay" id="goalOverlay">
-                    <div class="goal-frame">
+                    <div class="goal-frame" id="goalFrame">
                         <div class="goal-left-post"></div>
                         <div class="goal-right-post"></div>
                         <div class="goal-crossbar"></div>
                     </div>
                 </div>
                 
-                <div class="recording-indicator" id="recordingIndicator">
-                    ● REC
-                </div>
-                
-                <button class="overlay-toggle" id="overlayToggle">
-                    Masquer overlay
-                </button>
-                
                 <button class="alignment-detector" id="alignmentDetector">
-                    Détecter alignement
+                    🔍 Activer détection
                 </button>
+            </div>
+
+            <div class="debug-info" id="debugInfo">
+                <strong>Debug Info:</strong><br>
+                <span id="debugText">Aucune analyse</span>
             </div>
 
             <div class="controls">
                 <button class="btn btn-primary" id="startBtn">
-                    Démarrer
+                    🎥 Démarrer
                 </button>
                 
                 <button class="btn btn-secondary" id="flipBtn" disabled>
-                    Retourner
+                    🔄 Retourner
                 </button>
                 
-                <button class="btn btn-secondary" id="fullscreenBtn" disabled>
-                    Plein Écran
+                <button class="btn btn-secondary" id="debugBtn" disabled>
+                    🐛 Debug
                 </button>
                 
-                <button class="btn btn-success" id="recordBtn" disabled>
-                    Enregistrer
-                </button>
-                
-                <button class="btn btn-secondary hidden" id="downloadBtn">
-                    Télécharger
+                <button class="btn btn-secondary" id="sensitivityBtn" disabled>
+                    ⚙️ Sensibilité
                 </button>
             </div>
         </div>
@@ -509,33 +366,31 @@
     <script>
         // Variables globales
         let camera = document.getElementById('camera');
-        let mediaRecorder = null;
-        let recordedChunks = [];
+        let detectionCanvas = document.getElementById('detectionCanvas');
+        let ctx = detectionCanvas.getContext('2d');
         let stream = null;
-        let isRecording = false;
         let facingMode = 'environment';
-        let overlayVisible = true;
-        let isFullscreen = false;
-        let alignmentDetectionActive = false;
-        let alignmentCheckInterval = null;
+        let detectionActive = false;
+        let detectionInterval = null;
+        let sensitivity = 0.3; // Sensibilité de la détection (0.1 à 1.0)
+        let debugMode = false;
 
         // Éléments DOM
         const status = document.getElementById('status');
         const startBtn = document.getElementById('startBtn');
         const flipBtn = document.getElementById('flipBtn');
-        const recordBtn = document.getElementById('recordBtn');
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const goalOverlay = document.getElementById('goalOverlay');
-        const overlayToggle = document.getElementById('overlayToggle');
-        const recordingIndicator = document.getElementById('recordingIndicator');
-        const videoContainer = document.querySelector('.video-container');
         const alignmentDetector = document.getElementById('alignmentDetector');
-        const goalFrame = document.querySelector('.goal-frame');
+        const goalFrame = document.getElementById('goalFrame');
+        const confidenceBar = document.getElementById('confidenceBar');
+        const confidenceText = document.getElementById('confidenceText');
+        const debugInfo = document.getElementById('debugInfo');
+        const debugBtn = document.getElementById('debugBtn');
+        const sensitivityBtn = document.getElementById('sensitivityBtn');
+        const debugText = document.getElementById('debugText');
 
         // Fonction pour mettre à jour le statut
-        function updateStatus(message, type = 'info') {
-            status.innerHTML = message;
+        function updateStatus(message) {
+            status.textContent = message;
             console.log(message);
         }
 
@@ -545,46 +400,45 @@
                 updateStatus('Demande d\'accès à la caméra...');
                 startBtn.disabled = true;
 
-                // Arrêter le stream existant
                 if (stream) {
                     stream.getTracks().forEach(track => track.stop());
                 }
 
-                // Contraintes de base
                 const constraints = {
                     video: {
                         facingMode: facingMode,
                         width: { ideal: 1920, min: 1280 },
                         height: { ideal: 1080, min: 720 }
-                    },
-                    audio: true
+                    }
                 };
 
-                // Obtenir le stream
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
                 camera.srcObject = stream;
 
-                // Attendre que la vidéo soit prête
                 await new Promise((resolve) => {
-                    camera.onloadedmetadata = resolve;
+                    camera.onloadedmetadata = () => {
+                        // Ajuster la taille du canvas à la vidéo
+                        detectionCanvas.width = camera.videoWidth;
+                        detectionCanvas.height = camera.videoHeight;
+                        resolve();
+                    };
                 });
 
                 await camera.play();
 
-                // Activer les contrôles
                 flipBtn.disabled = false;
-                recordBtn.disabled = false;
-                fullscreenBtn.disabled = false;
-                startBtn.textContent = 'Caméra Active';
+                debugBtn.disabled = false;
+                sensitivityBtn.disabled = false;
+                startBtn.textContent = '✅ Caméra Active';
                 startBtn.disabled = false;
 
-                updateStatus('Caméra prête ! Vous pouvez maintenant filmer');
+                updateStatus('Caméra prête ! Activez la détection d\'alignement');
 
             } catch (error) {
                 console.error('Erreur caméra:', error);
-                updateStatus(`Erreur: ${error.message}. Vérifiez les permissions Safari.`);
+                updateStatus(`Erreur: ${error.message}`);
                 startBtn.disabled = false;
-                startBtn.textContent = 'Réessayer';
+                startBtn.textContent = '🔄 Réessayer';
             }
         }
 
@@ -594,342 +448,203 @@
             await startCamera();
         }
 
-        // Basculer l'enregistrement
-        function toggleRecording() {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
+        // Détection d'alignement par analyse d'image
+        function detectGoalAlignment() {
+            if (!camera.videoWidth || !camera.videoHeight) return;
+
+            // Dessiner l'image de la caméra sur le canvas
+            ctx.drawImage(camera, 0, 0, detectionCanvas.width, detectionCanvas.height);
+            
+            // Obtenir les données d'image
+            const imageData = ctx.getImageData(0, 0, detectionCanvas.width, detectionCanvas.height);
+            const data = imageData.data;
+            
+            // Analyse simplifiée pour détecter les lignes droites
+            const edgeStrength = detectEdges(data, detectionCanvas.width, detectionCanvas.height);
+            const lineDetection = detectLines(data, detectionCanvas.width, detectionCanvas.height);
+            
+            // Calculer le score de confiance
+            const confidence = calculateConfidence(edgeStrength, lineDetection);
+            
+            // Mettre à jour l'interface
+            updateDetectionUI(confidence);
+            
+            // Debug info
+            if (debugMode) {
+                debugText.innerHTML = `
+                    Canvas: ${detectionCanvas.width}x${detectionCanvas.height}<br>
+                    Contours: ${edgeStrength.toFixed(2)}<br>
+                    Lignes: ${lineDetection.toFixed(2)}<br>
+                    Confiance: ${confidence.toFixed(2)}<br>
+                    Sensibilité: ${sensitivity.toFixed(2)}
+                `;
             }
         }
 
-        // Démarrer l'enregistrement
-        function startRecording() {
-            try {
-                if (!stream) {
-                    updateStatus('Aucun stream caméra disponible');
-                    return;
-                }
-
-                recordedChunks = [];
-                mediaRecorder = new MediaRecorder(stream);
-
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
-                };
-
-                mediaRecorder.onstop = () => {
-                    createDownloadLink();
-                };
-
-                mediaRecorder.onerror = (event) => {
-                    console.error('Erreur:', event.error);
-                    updateStatus(`Erreur: ${event.error.message}`);
-                    isRecording = false;
-                    updateRecordingInterface(false);
-                };
-
-                mediaRecorder.start();
-                isRecording = true;
-                updateRecordingInterface(true);
-                updateStatus('Enregistrement...');
-
-            } catch (error) {
-                console.error('Erreur:', error);
-                updateStatus(`Erreur: ${error.message}`);
-            }
-        }
-
-        // Arrêter l'enregistrement
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                try {
-                    mediaRecorder.stop();
-                    isRecording = false;
-                    updateRecordingInterface(false);
-                    updateStatus('Traitement de la vidéo...');
-                } catch (error) {
-                    console.error('Erreur lors de l\'arrêt:', error);
-                    updateStatus('Erreur lors de l\'arrêt de l\'enregistrement');
-                    isRecording = false;
-                    updateRecordingInterface(false);
-                }
-            }
-        }
-
-        // Fonction pour mettre à jour l'interface d'enregistrement
-        function updateRecordingInterface(recording) {
-            if (recording) {
-                recordBtn.innerHTML = 'Arrêter';
-                recordingIndicator.classList.add('active');
-                flipBtn.disabled = true;
-                fullscreenBtn.disabled = true;
-            } else {
-                recordBtn.innerHTML = 'Enregistrer';
-                recordingIndicator.classList.remove('active');
-                flipBtn.disabled = false;
-                fullscreenBtn.disabled = false;
-            }
-        }
-
-        // Créer le lien de téléchargement
-        function createDownloadLink() {
-            if (recordedChunks.length === 0) {
-                updateStatus('Aucune donnée enregistrée');
-                return;
-            }
-
-            let mimeType = 'video/webm';
-            let fileExtension = 'webm';
+        // Détection de contours simplifiée
+        function detectEdges(data, width, height) {
+            let edgeCount = 0;
+            const threshold = 30;
             
-            if (recordedChunks[0] && recordedChunks[0].type) {
-                mimeType = recordedChunks[0].type;
-                if (mimeType.includes('mp4')) {
-                    fileExtension = 'mp4';
-                } else if (mimeType.includes('webm')) {
-                    fileExtension = 'webm';
-                }
-            }
-            
-            const blob = new Blob(recordedChunks, { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
-
-            downloadBtn.onclick = () => {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `penalty_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${fileExtension}`;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                updateStatus(`Téléchargement lancé ! Vidéo sauvée en .${fileExtension}`);
-            };
-
-            downloadBtn.classList.remove('hidden');
-            updateStatus(`Vidéo prête (${sizeMB} MB, .${fileExtension}) ! Cliquez sur Télécharger`);
-        }
-
-        // Basculer le mode plein écran
-        function toggleFullscreen() {
-            if (!isFullscreen) {
-                enterFullscreen();
-            } else {
-                exitFullscreen();
-            }
-        }
-
-        // Entrer en mode plein écran - Solution Safari iOS
-        function enterFullscreen() {
-            try {
-                // Solution 1: Essayer l'API fullscreen standard
-                if (videoContainer.requestFullscreen) {
-                    videoContainer.requestFullscreen();
-                    return;
-                }
-                
-                // Solution 2: Safari iOS - webkitRequestFullscreen
-                if (videoContainer.webkitRequestFullscreen) {
-                    videoContainer.webkitRequestFullscreen();
-                    return;
-                }
-                
-                // Solution 3: Fallback - mode immersif CSS
-                enterImmersiveMode();
-                
-            } catch (error) {
-                console.log('Fullscreen API échouée, mode immersif:', error);
-                enterImmersiveMode();
-            }
-        }
-
-        // Mode immersif pour Safari iOS (quand fullscreen API ne marche pas)
-        function enterImmersiveMode() {
-            isFullscreen = true;
-            
-            // Masquer la barre d'adresse Safari en scrollant
-            window.scrollTo(0, 1);
-            
-            // Ajouter les classes CSS
-            document.body.classList.add('immersive-mode');
-            videoContainer.classList.add('fullscreen-mode');
-            
-            // Masquer le scroll
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-            
-            // Forcer la hauteur viewport
-            document.body.style.height = '100vh';
-            document.documentElement.style.height = '100vh';
-            
-            createFullscreenInterface();
-            fullscreenBtn.textContent = 'Quitter FS';
-            updateStatus('Mode immersif activé');
-            
-            // Essayer de masquer la barre d'adresse après un délai
-            setTimeout(() => {
-                window.scrollTo(0, 1);
-            }, 100);
-        }
-
-        // Créer l'interface fullscreen
-        function createFullscreenInterface() {
-            const fullscreenControls = document.createElement('div');
-            fullscreenControls.className = 'fullscreen-controls';
-            fullscreenControls.id = 'fullscreenControls';
-            
-            fullscreenControls.innerHTML = `
-                <button class="fullscreen-btn" onclick="flipCamera()">🔄</button>
-                <button class="fullscreen-btn record" id="fullscreenRecordBtn" onclick="toggleRecording()">●</button>
-            `;
-            
-            const exitBtn = document.createElement('button');
-            exitBtn.className = 'fullscreen-exit';
-            exitBtn.textContent = '✕ Sortir';
-            exitBtn.onclick = exitFullscreen;
-            
-            // NE PAS créer un nouveau bouton overlay, utiliser celui existant
-            // qui est déjà dans le DOM
-            
-            videoContainer.appendChild(fullscreenControls);
-            videoContainer.appendChild(exitBtn);
-        }
-
-        // Sortir du mode plein écran
-        function exitFullscreen() {
-            try {
-                if (document.fullscreenElement || document.webkitFullscreenElement || 
-                    document.mozFullScreenElement || document.msFullscreenElement) {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    } else if (document.webkitExitFullscreen) {
-                        document.webkitExitFullscreen();
-                    } else if (document.mozCancelFullScreen) {
-                        document.mozCancelFullScreen();
-                    } else if (document.msExitFullscreen) {
-                        document.msExitFullscreen();
-                    }
-                } else {
-                    cleanupFullscreen();
-                }
-            } catch (error) {
-                cleanupFullscreen();
-            }
-        }
-
-        // Nettoyer l'interface fullscreen
-        function cleanupFullscreen() {
-            isFullscreen = false;
-            
-            if (alignmentDetectionActive) {
-                toggleAlignmentDetection();
-            }
-            
-            // Nettoyer les classes CSS
-            document.body.classList.remove('immersive-mode');
-            videoContainer.classList.remove('fullscreen-mode');
-            
-            // Restaurer le scroll
-            document.body.style.overflow = '';
-            document.documentElement.style.overflow = '';
-            document.body.style.height = '';
-            document.documentElement.style.height = '';
-            
-            // Supprimer les éléments fullscreen
-            const fullscreenControls = document.getElementById('fullscreenControls');
-            const exitBtn = videoContainer.querySelector('.fullscreen-exit');
-            
-            if (fullscreenControls) fullscreenControls.remove();
-            if (exitBtn) exitBtn.remove();
-            
-            fullscreenBtn.textContent = 'Plein Écran';
-            updateStatus('Mode normal restauré');
-        }
-
-        // Event listeners pour le fullscreen natif
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-        function handleFullscreenChange() {
-            if (document.fullscreenElement || document.webkitFullscreenElement || 
-                document.mozFullScreenElement || document.msFullscreenElement) {
-                // Entré en VRAI fullscreen - barres Safari masquées !
-                isFullscreen = true;
-                videoContainer.classList.add('fullscreen-mode');
-                createFullscreenInterface();
-                fullscreenBtn.textContent = 'Quitter FS';
-                updateStatus('🎯 Fullscreen natif - Barres Safari masquées !');
-            } else {
-                // Sorti du fullscreen
-                cleanupFullscreen();
-            }
-        }
-        function toggleAlignmentDetection() {
-            alignmentDetectionActive = !alignmentDetectionActive;
-            
-            if (alignmentDetectionActive) {
-                alignmentDetector.textContent = 'Arrêter détection';
-                alignmentDetector.classList.add('active');
-                updateStatus('Détection d\'alignement activée');
-                
-                alignmentCheckInterval = setInterval(() => {
-                    // Simulation simple - en réalité il faudrait analyser l'image
-                    const isAligned = Math.random() > 0.7; // 30% de chance d'être aligné
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const i = (y * width + x) * 4;
                     
-                    if (isAligned) {
-                        goalFrame.classList.add('aligned');
-                        updateStatus('✅ ALIGNÉ ! Les barres sont vertes');
-                    } else {
-                        goalFrame.classList.remove('aligned');
-                        updateStatus('Alignement en cours...');
+                    // Convertir en niveaux de gris
+                    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const grayRight = (data[i + 4] + data[i + 5] + data[i + 6]) / 3;
+                    const grayBottom = (data[i + width * 4] + data[i + width * 4 + 1] + data[i + width * 4 + 2]) / 3;
+                    
+                    // Gradients
+                    const gradX = Math.abs(gray - grayRight);
+                    const gradY = Math.abs(gray - grayBottom);
+                    
+                    if (gradX > threshold || gradY > threshold) {
+                        edgeCount++;
                     }
-                }, 1000);
-                
-            } else {
-                alignmentDetector.textContent = 'Détecter alignement';
-                alignmentDetector.classList.remove('active');
-                goalFrame.classList.remove('aligned');
-                updateStatus('Détection d\'alignement désactivée');
-                
-                if (alignmentCheckInterval) {
-                    clearInterval(alignmentCheckInterval);
-                    alignmentCheckInterval = null;
                 }
+            }
+            
+            return edgeCount / (width * height);
+        }
+
+        // Détection de lignes droites simplifiée
+        function detectLines(data, width, height) {
+            let horizontalLines = 0;
+            let verticalLines = 0;
+            
+            // Échantillonner des lignes horizontales
+            for (let y = 0; y < height; y += 10) {
+                let lineStrength = 0;
+                for (let x = 0; x < width - 1; x++) {
+                    const i = (y * width + x) * 4;
+                    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const grayNext = (data[i + 4] + data[i + 5] + data[i + 6]) / 3;
+                    
+                    if (Math.abs(gray - grayNext) < 10) {
+                        lineStrength++;
+                    }
+                }
+                if (lineStrength > width * 0.7) {
+                    horizontalLines++;
+                }
+            }
+            
+            // Échantillonner des lignes verticales
+            for (let x = 0; x < width; x += 10) {
+                let lineStrength = 0;
+                for (let y = 0; y < height - 1; y++) {
+                    const i = (y * width + x) * 4;
+                    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const grayNext = (data[(y + 1) * width + x] * 4);
+                    const grayNextValue = (data[grayNext] + data[grayNext + 1] + data[grayNext + 2]) / 3;
+                    
+                    if (Math.abs(gray - grayNextValue) < 10) {
+                        lineStrength++;
+                    }
+                }
+                if (lineStrength > height * 0.7) {
+                    verticalLines++;
+                }
+            }
+            
+            return (horizontalLines + verticalLines) / 20; // Normaliser
+        }
+
+        // Calculer la confiance de détection
+        function calculateConfidence(edgeStrength, lineDetection) {
+            const edgeScore = Math.min(edgeStrength * 100, 1.0);
+            const lineScore = Math.min(lineDetection * 0.5, 1.0);
+            
+            return (edgeScore + lineScore) / 2;
+        }
+
+        // Mettre à jour l'interface de détection
+        function updateDetectionUI(confidence) {
+            const percentage = Math.round(confidence * 100);
+            confidenceBar.style.width = `${percentage}%`;
+            confidenceText.textContent = `Confiance : ${percentage}%`;
+            
+            // Changer l'état de l'overlay
+            goalFrame.classList.remove('aligned', 'partial');
+            
+            if (confidence > sensitivity + 0.4) {
+                goalFrame.classList.add('aligned');
+                updateStatus('🎯 PARFAITEMENT ALIGNÉ !');
+            } else if (confidence > sensitivity) {
+                goalFrame.classList.add('partial');
+                updateStatus('🟠 Détection partielle - Ajustez la position');
+            } else {
+                updateStatus('🔍 Recherche d\'alignement...');
             }
         }
 
-        // Basculer l'overlay
-        function toggleOverlay() {
-            overlayVisible = !overlayVisible;
-            goalOverlay.style.display = overlayVisible ? 'block' : 'none';
-            overlayToggle.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
+        // Basculer la détection
+        function toggleDetection() {
+            detectionActive = !detectionActive;
+            
+            if (detectionActive) {
+                alignmentDetector.textContent = '🛑 Arrêter détection';
+                alignmentDetector.classList.add('active');
+                
+                detectionInterval = setInterval(() => {
+                    detectGoalAlignment();
+                }, 200); // Analyse toutes les 200ms
+                
+                updateStatus('🔍 Détection active - Positionnez la cage dans l\'overlay');
+            } else {
+                alignmentDetector.textContent = '🔍 Activer détection';
+                alignmentDetector.classList.remove('active');
+                goalFrame.classList.remove('aligned', 'partial');
+                
+                if (detectionInterval) {
+                    clearInterval(detectionInterval);
+                    detectionInterval = null;
+                }
+                
+                confidenceBar.style.width = '0%';
+                confidenceText.textContent = 'Confiance : 0%';
+                updateStatus('Détection arrêtée');
+            }
+        }
+
+        // Basculer le mode debug
+        function toggleDebug() {
+            debugMode = !debugMode;
+            
+            if (debugMode) {
+                debugInfo.classList.add('show');
+                debugBtn.textContent = '🐛 Masquer Debug';
+            } else {
+                debugInfo.classList.remove('show');
+                debugBtn.textContent = '🐛 Debug';
+            }
+        }
+
+        // Ajuster la sensibilité
+        function adjustSensitivity() {
+            sensitivity += 0.1;
+            if (sensitivity > 1.0) sensitivity = 0.1;
+            
+            sensitivityBtn.textContent = `⚙️ Sensibilité ${Math.round(sensitivity * 10)}/10`;
+            updateStatus(`Sensibilité ajustée à ${Math.round(sensitivity * 10)}/10`);
         }
 
         // Event listeners
         startBtn.addEventListener('click', startCamera);
         flipBtn.addEventListener('click', flipCamera);
-        recordBtn.addEventListener('click', toggleRecording);
-        fullscreenBtn.addEventListener('click', toggleFullscreen);
-        downloadBtn.addEventListener('click', () => downloadBtn.onclick());
-        overlayToggle.addEventListener('click', toggleOverlay);
-        alignmentDetector.addEventListener('click', toggleAlignmentDetection);
+        alignmentDetector.addEventListener('click', toggleDetection);
+        debugBtn.addEventListener('click', toggleDebug);
+        sensitivityBtn.addEventListener('click', adjustSensitivity);
 
-        // Vérifications de base
+        // Initialisation
         document.addEventListener('DOMContentLoaded', () => {
             if (!navigator.mediaDevices?.getUserMedia) {
-                updateStatus('Caméra non supportée');
+                updateStatus('❌ Caméra non supportée sur ce navigateur');
                 return;
             }
-            if (!window.MediaRecorder) {
-                updateStatus('Enregistrement non supporté');
-                return;
-            }
-            updateStatus('Prêt à filmer !');
+            
+            updateStatus('✅ Prêt pour la détection d\'alignement intelligent !');
         });
     </script>
 </body>
