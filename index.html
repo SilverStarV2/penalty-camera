@@ -668,7 +668,133 @@
             updateStatus(`Vidéo prête (${sizeMB} MB, .${fileExtension}) ! Cliquez sur Télécharger`);
         }
 
-        // Basculer la détection d'alignement
+        // Basculer le mode plein écran
+        function toggleFullscreen() {
+            if (!isFullscreen) {
+                enterFullscreen();
+            } else {
+                exitFullscreen();
+            }
+        }
+
+        // Entrer en mode plein écran
+        function enterFullscreen() {
+            try {
+                if (videoContainer.requestFullscreen) {
+                    videoContainer.requestFullscreen();
+                } else if (videoContainer.webkitRequestFullscreen) {
+                    videoContainer.webkitRequestFullscreen();
+                } else if (videoContainer.mozRequestFullScreen) {
+                    videoContainer.mozRequestFullScreen();
+                } else if (videoContainer.msRequestFullscreen) {
+                    videoContainer.msRequestFullscreen();
+                } else {
+                    fallbackFullscreen();
+                    return;
+                }
+            } catch (error) {
+                fallbackFullscreen();
+            }
+        }
+
+        // Mode fullscreen de fallback
+        function fallbackFullscreen() {
+            isFullscreen = true;
+            videoContainer.classList.add('fullscreen-mode');
+            createFullscreenInterface();
+            document.body.style.overflow = 'hidden';
+            fullscreenBtn.textContent = 'Quitter FS';
+            updateStatus('Mode plein écran activé !');
+        }
+
+        // Créer l'interface fullscreen
+        function createFullscreenInterface() {
+            const fullscreenControls = document.createElement('div');
+            fullscreenControls.className = 'fullscreen-controls';
+            fullscreenControls.id = 'fullscreenControls';
+            
+            fullscreenControls.innerHTML = `
+                <button class="fullscreen-btn" onclick="flipCamera()">🔄</button>
+                <button class="fullscreen-btn record" id="fullscreenRecordBtn" onclick="toggleRecording()">●</button>
+            `;
+            
+            const exitBtn = document.createElement('button');
+            exitBtn.className = 'fullscreen-exit';
+            exitBtn.textContent = '✕ Sortir';
+            exitBtn.onclick = exitFullscreen;
+            
+            const overlayToggleFs = document.createElement('button');
+            overlayToggleFs.className = 'fullscreen-overlay-toggle';
+            overlayToggleFs.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
+            overlayToggleFs.onclick = toggleOverlay;
+            
+            videoContainer.appendChild(fullscreenControls);
+            videoContainer.appendChild(exitBtn);
+            videoContainer.appendChild(overlayToggleFs);
+        }
+
+        // Sortir du mode plein écran
+        function exitFullscreen() {
+            try {
+                if (document.fullscreenElement || document.webkitFullscreenElement || 
+                    document.mozFullScreenElement || document.msFullscreenElement) {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                } else {
+                    cleanupFullscreen();
+                }
+            } catch (error) {
+                cleanupFullscreen();
+            }
+        }
+
+        // Nettoyer l'interface fullscreen
+        function cleanupFullscreen() {
+            isFullscreen = false;
+            
+            if (alignmentDetectionActive) {
+                toggleAlignmentDetection();
+            }
+            
+            videoContainer.classList.remove('fullscreen-mode');
+            
+            const fullscreenControls = document.getElementById('fullscreenControls');
+            const exitBtn = videoContainer.querySelector('.fullscreen-exit');
+            const overlayToggleFs = videoContainer.querySelector('.fullscreen-overlay-toggle');
+            
+            if (fullscreenControls) fullscreenControls.remove();
+            if (exitBtn) exitBtn.remove();
+            if (overlayToggleFs) overlayToggleFs.remove();
+            
+            document.body.style.overflow = '';
+            fullscreenBtn.textContent = 'Plein Écran';
+            updateStatus('Mode normal restauré');
+        }
+
+        // Event listeners pour le fullscreen natif
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        function handleFullscreenChange() {
+            if (document.fullscreenElement || document.webkitFullscreenElement || 
+                document.mozFullScreenElement || document.msFullscreenElement) {
+                isFullscreen = true;
+                createFullscreenInterface();
+                fullscreenBtn.textContent = 'Quitter FS';
+                updateStatus('Mode plein écran activé !');
+            } else {
+                cleanupFullscreen();
+            }
+        }
         function toggleAlignmentDetection() {
             alignmentDetectionActive = !alignmentDetectionActive;
             
@@ -714,6 +840,7 @@
         startBtn.addEventListener('click', startCamera);
         flipBtn.addEventListener('click', flipCamera);
         recordBtn.addEventListener('click', toggleRecording);
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
         downloadBtn.addEventListener('click', () => downloadBtn.onclick());
         overlayToggle.addEventListener('click', toggleOverlay);
         alignmentDetector.addEventListener('click', toggleAlignmentDetection);
