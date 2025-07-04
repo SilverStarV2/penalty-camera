@@ -81,68 +81,293 @@
             z-index: 2;
         }
 
+        /* POCHOIR DE CAGE 3D - STRUCTURE CORRECTE */
         .goal-frame {
-            width: 280px;  /* Ajusté pour iPhone x1 depuis 11m */
-            height: 94px;  /* Ratio FIFA 3:1 exact */
+            width: 61vw;
+            height: calc(61vw / 3);
             position: relative;
-        }
-
-        /* Montant gauche */
-        .goal-left-post {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 3px;  /* Plus fin, proportionnel */
-            height: 94px;
-            background: rgba(255, 255, 255, 1);
-            border-radius: 1.5px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-            z-index: 10;
+            background: transparent;
             transition: all 0.3s ease;
         }
 
-        /* Montant droit */
-        .goal-right-post {
+        /* GRAND U ARRIÈRE (61%) */
+        /* Barre transversale du haut */
+        .goal-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 1);
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Poteau gauche du grand U */
+        .goal-frame::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 1);
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Poteau droit du grand U */
+        .goal-frame .right-post {
             position: absolute;
             top: 0;
             right: 0;
-            width: 3px;  /* Plus fin, proportionnel */
-            height: 94px;
+            width: 4px;
+            height: 100%;
             background: rgba(255, 255, 255, 1);
-            border-radius: 1.5px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-            z-index: 10;
-            transition: all 0.3s ease;
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
         }
 
-        /* Barre horizontale */
-        .goal-crossbar {
+        /* PETIT U AVANT (59%) */
+        .goal-frame .small-u {
+            position: absolute;
+            top: 1vw;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 59vw;
+            height: calc(59vw / 3 - 1vw);
+        }
+
+        /* Barre transversale du petit U */
+        .goal-frame .small-u::before {
+            content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 280px;
-            height: 3px;  /* Plus fin, proportionnel */
-            background: rgba(255, 255, 255, 1);
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 1.5px;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-            z-index: 10;
-            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
         }
 
-        /* État aligné - barres vertes */
-        .goal-frame.aligned .goal-left-post,
-        .goal-frame.aligned .goal-right-post,
-        .goal-frame.aligned .goal-crossbar {
+        /* Poteau gauche du petit U */
+        .goal-frame .small-u::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Poteau droit du petit U */
+        .goal-frame .small-u .small-right-post {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 3px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* FERMETURE GAUCHE - Entre le poteau gauche du grand U et celui du petit U */
+        .goal-frame .left-connection {
+            position: absolute;
+            bottom: 0;  /* En bas */
+            left: 4px;  /* Après le poteau gauche du grand U */
+            width: calc((61vw - 59vw) / 2 - 4px);  /* Largeur de l'espace entre les 2 poteaux */
+            height: 3px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* FERMETURE DROITE - Entre le poteau droit du grand U et celui du petit U */
+        .goal-frame .right-connection {
+            position: absolute;
+            bottom: 0;  /* En bas */
+            right: 4px;  /* Avant le poteau droit du grand U */
+            width: calc((61vw - 59vw) / 2 - 4px);  /* Largeur de l'espace entre les 2 poteaux */
+            height: 3px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* États de couleur */
+        .goal-frame.aligned::before,
+        .goal-frame.aligned::after,
+        .goal-frame.aligned .right-post,
+        .goal-frame.aligned .small-u::before,
+        .goal-frame.aligned .small-u::after,
+        .goal-frame.aligned .small-u .small-right-post,
+        .goal-frame.aligned .left-connection,
+        .goal-frame.aligned .right-connection {
             background: rgba(0, 255, 0, 1);
-            box-shadow: 0 0 12px rgba(0, 255, 0, 0.8);
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
         }
 
-        /* État détection partielle - barres oranges */
-        .goal-frame.partial .goal-left-post,
-        .goal-frame.partial .goal-right-post,
-        .goal-frame.partial .goal-crossbar {
+        .goal-frame.partial::before,
+        .goal-frame.partial::after,
+        .goal-frame.partial .right-post,
+        .goal-frame.partial .small-u::before,
+        .goal-frame.partial .small-u::after,
+        .goal-frame.partial .small-u .small-right-post,
+        .goal-frame.partial .left-connection,
+        .goal-frame.partial .right-connection {
             background: rgba(255, 165, 0, 1);
-            box-shadow: 0 0 12px rgba(255, 165, 0, 0.8);
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.8);
+        }0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 1);
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Montant gauche du grand U */
+        .goal-frame::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 1);
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Montant droit du grand U */
+        .goal-frame .right-post {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 1);
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* PETIT U (59%) */
+        .goal-frame .small-u {
+            position: absolute;
+            top: 1vw;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 59vw;
+            height: calc(59vw / 3 - 1vw);
+        }
+
+        /* Barre transversale du petit U */
+        .goal-frame .small-u::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Montant gauche du petit U */
+        .goal-frame .small-u::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Montant droit du petit U */
+        .goal-frame .small-u .small-right-post {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 3px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* CONNEXION VERTICALE GAUCHE - RELIE LES 2 POTEAUX GAUCHES */
+        .goal-frame .left-connection {
+            position: absolute;
+            top: 1vw;  /* Démarre du haut du petit U */
+            left: calc((61vw - 59vw) / 2);  /* Position entre les 2 poteaux gauches */
+            width: 3px;
+            height: calc(59vw / 3 - 1vw);  /* Hauteur du petit U */
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* CONNEXION VERTICALE DROITE - RELIE LES 2 POTEAUX DROITS */
+        .goal-frame .right-connection {
+            position: absolute;
+            top: 1vw;  /* Démarre du haut du petit U */
+            right: calc((61vw - 59vw) / 2);  /* Position entre les 2 poteaux droits */
+            width: 3px;
+            height: calc(59vw / 3 - 1vw);  /* Hauteur du petit U */
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.5px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        /* BARRE DE FERMETURE EN BAS - FERME TOUT LE POCHOIR */
+        .goal-frame .bottom-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;  /* Toute la largeur du grand U */
+            height: 4px;
+            background: rgba(255, 255, 255, 1);
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* État aligné - TOUS LES ÉLÉMENTS en vert */
+        .goal-frame.aligned::before,
+        .goal-frame.aligned::after,
+        .goal-frame.aligned .right-post,
+        .goal-frame.aligned .small-u::before,
+        .goal-frame.aligned .small-u::after,
+        .goal-frame.aligned .small-u .small-right-post,
+        .goal-frame.aligned .left-connection,
+        .goal-frame.aligned .right-connection,
+        .goal-frame.aligned .bottom-bar {
+            background: rgba(0, 255, 0, 1);
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
+        }
+
+        /* État détection partielle - TOUS LES ÉLÉMENTS en orange */
+        .goal-frame.partial::before,
+        .goal-frame.partial::after,
+        .goal-frame.partial .right-post,
+        .goal-frame.partial .small-u::before,
+        .goal-frame.partial .small-u::after,
+        .goal-frame.partial .small-u .small-right-post,
+        .goal-frame.partial .left-connection,
+        .goal-frame.partial .right-connection,
+        .goal-frame.partial .bottom-bar {
+            background: rgba(255, 165, 0, 1);
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.8);
         }
 
         .controls {
@@ -279,52 +504,18 @@
 
         /* Overlay adaptatif selon le zoom */
         .goal-frame.zoom-06 {
-            width: 380px;  /* Ultra wide - but plus petit dans le cadre */
+            width: 380px;
             height: 127px;
         }
 
         .goal-frame.zoom-1 {
-            width: 280px;  /* Standard x1 */
+            width: 280px;
             height: 94px;
         }
 
         .goal-frame.zoom-2 {
-            width: 140px;  /* Zoom x2 - but plus gros, overlay plus petit */
-            height: 47px;
-        }
-
-        /* Ajustements des poteaux selon le zoom */
-        .goal-frame.zoom-06 .goal-left-post,
-        .goal-frame.zoom-06 .goal-right-post {
-            width: 4px;
-            height: 127px;
-        }
-
-        .goal-frame.zoom-06 .goal-crossbar {
-            width: 380px;
-            height: 4px;
-        }
-
-        .goal-frame.zoom-1 .goal-left-post,
-        .goal-frame.zoom-1 .goal-right-post {
-            width: 3px;
-            height: 94px;
-        }
-
-        .goal-frame.zoom-1 .goal-crossbar {
-            width: 280px;
-            height: 3px;
-        }
-
-        .goal-frame.zoom-2 .goal-left-post,
-        .goal-frame.zoom-2 .goal-right-post {
-            width: 2px;
-            height: 47px;
-        }
-
-        .goal-frame.zoom-2 .goal-crossbar {
             width: 140px;
-            height: 2px;
+            height: 47px;
         }
 
         .features {
@@ -441,7 +632,7 @@
             height: 100vh !important;
         }
 
-        /* Responsive mobile */
+        /* Responsive mobile - ajuster les tailles des 2 U */
         @media (max-width: 768px) {
             .main-container {
                 padding: 15px;
@@ -455,20 +646,23 @@
                 height: 250px;
             }
             
-            /* Mobile portrait - plus petit */
+            /* Mobile portrait - garde les % */
             .goal-frame {
-                width: 245px;
-                height: 82px;
+                width: 61vw;
+                height: calc(61vw / 3);
             }
             
-            .goal-left-post, .goal-right-post {
-                width: 3px;
-                height: 82px;
+            .goal-frame .small-u {
+                width: 59vw;
+                height: calc(59vw / 3 - 1vw);
             }
             
-            .goal-crossbar {
-                width: 245px;
-                height: 3px;
+            .goal-frame .left-connection {
+                width: calc((61vw - 59vw) / 2 - 4px);
+            }
+            
+            .goal-frame .right-connection {
+                width: calc((61vw - 59vw) / 2 - 4px);
             }
             
             .controls {
@@ -504,38 +698,43 @@
                 display: none;
             }
             
-            /* OVERLAY REPRODUISANT TA PHOTO EN PAYSAGE */
+            /* OVERLAY EN PAYSAGE - garde les % pour les 2 U */
             .goal-frame {
-                width: 350px !important;  /* Taille intermédiaire paysage */
-                height: 117px !important; /* Ratio FIFA 3:1 */
+                width: 61vw !important;
+                height: calc(61vw / 3) !important;
             }
             
-            .goal-left-post, .goal-right-post {
-                width: 4px !important;
-                height: 117px !important;
+            .goal-frame .small-u {
+                width: 59vw !important;
+                height: calc(59vw / 3 - 1vw) !important;
             }
             
-            .goal-crossbar {
-                width: 350px !important;
-                height: 4px !important;
+            .goal-frame .left-connection {
+                width: calc((61vw - 59vw) / 2 - 4px) !important;
+            }
+            
+            .goal-frame .right-connection {
+                width: calc((61vw - 59vw) / 2 - 4px) !important;
             }
         }
 
-        /* FULLSCREEN PAYSAGE - COMME TA PHOTO EXACTEMENT */
+        /* FULLSCREEN PAYSAGE - 61% et 59% pour les 2 U */
         .fullscreen-mode .goal-frame {
-            width: 60vw !important;                /* Largeur dynamique = 72% de l'écran */
-            height: calc(60vw / 3) !important;     /* Hauteur pour un ratio 3:1 */
+            width: 61vw !important;
+            height: calc(61vw / 3) !important;
         }
 
-        .fullscreen-mode .goal-left-post, 
-        .fullscreen-mode .goal-right-post {
-            width: 0.8vw !important;
-            height: calc(60vw / 3) !important;
+        .fullscreen-mode .goal-frame .small-u {
+            width: 59vw !important;
+            height: calc(59vw / 3 - 1vw) !important;
         }
-
-        .fullscreen-mode .goal-crossbar {
-            width: 60vw !important;
-            height: 0.8vw !important;
+        
+        .fullscreen-mode .goal-frame .left-connection {
+            width: calc((61vw - 59vw) / 2 - 4px) !important;
+        }
+        
+        .fullscreen-mode .goal-frame .right-connection {
+            width: calc((61vw - 59vw) / 2 - 4px) !important;
         }
     </style>
 </head>
@@ -556,9 +755,12 @@
                 
                 <div class="goal-overlay" id="goalOverlay">
                     <div class="goal-frame">
-                        <div class="goal-left-post"></div>
-                        <div class="goal-right-post"></div>
-                        <div class="goal-crossbar"></div>
+                        <div class="right-post"></div>
+                        <div class="small-u">
+                            <div class="small-right-post"></div>
+                        </div>
+                        <div class="left-connection"></div>
+                        <div class="right-connection"></div>
                     </div>
                 </div>
                 
@@ -688,7 +890,7 @@
             }
         }
 
-        // DÉTECTION D'ALIGNEMENT SIMPLIFIÉE ET EFFICACE
+        // DÉTECTION D'ALIGNEMENT AMÉLIORÉE pour le contour
         function detectGoalAlignment() {
             if (!camera.videoWidth || !camera.videoHeight) return 0;
 
@@ -698,35 +900,35 @@
             // Obtenir les données d'image
             const imageData = ctx.getImageData(0, 0, detectionCanvas.width, detectionCanvas.height);
             
-            // Zone de détection EXACTEMENT où se trouve l'overlay
+            // Zone de détection correspondant exactement au contour de l'overlay
             const centerX = Math.floor(detectionCanvas.width / 2);
             const centerY = Math.floor(detectionCanvas.height / 2);
-            const overlayWidth = Math.floor(detectionCanvas.width * 0.35); // Zone overlay
-            const overlayHeight = Math.floor(detectionCanvas.height * 0.15); // Zone overlay
+            const overlayWidth = Math.floor(detectionCanvas.width * 0.35);
+            const overlayHeight = Math.floor(detectionCanvas.height * 0.15);
             
-            // 1. Détecter les contours forts (changements brusques de couleur)
-            const edgeScore = detectStrongEdges(imageData, centerX, centerY, overlayWidth, overlayHeight);
+            // 1. Détecter les contours forts dans la zone du contour
+            const edgeScore = detectFrameEdges(imageData, centerX, centerY, overlayWidth, overlayHeight);
             
             // 2. Détecter la structure rectangulaire
             const structureScore = detectRectangularStructure(imageData, centerX, centerY, overlayWidth, overlayHeight);
             
-            // 3. Détecter les objets clairs (pas forcément blanc pur)
-            const lightObjectScore = detectLightObjects(imageData, centerX, centerY, overlayWidth, overlayHeight);
+            // 3. Détecter les objets clairs qui correspondent aux poteaux
+            const lightObjectScore = detectGoalPosts(imageData, centerX, centerY, overlayWidth, overlayHeight);
             
-            // Score final - pondération équilibrée
-            const finalScore = (edgeScore * 0.4 + structureScore * 0.4 + lightObjectScore * 0.2);
+            // Score final - pondération pour le contour
+            const finalScore = (edgeScore * 0.5 + structureScore * 0.3 + lightObjectScore * 0.2);
             
             console.log(`🎯 Edge=${edgeScore.toFixed(2)} | Struct=${structureScore.toFixed(2)} | Light=${lightObjectScore.toFixed(2)} | Final=${finalScore.toFixed(2)}`);
             
             return finalScore;
         }
 
-        // Détecter les contours forts (transitions nettes)
-        function detectStrongEdges(imageData, centerX, centerY, width, height) {
+        // Détecter les contours le long du périmètre du cadre
+        function detectFrameEdges(imageData, centerX, centerY, width, height) {
             const data = imageData.data;
             const canvasWidth = imageData.width;
             
-            let strongEdges = 0;
+            let frameEdges = 0;
             let totalChecks = 0;
             
             const startX = Math.max(1, centerX - width/2);
@@ -734,30 +936,52 @@
             const startY = Math.max(1, centerY - height/2);
             const endY = Math.min(imageData.height-1, centerY + height/2);
             
-            for (let y = startY; y < endY; y += 2) {
-                for (let x = startX; x < endX; x += 2) {
+            // Vérifier les bords du cadre (périmètre)
+            // Bord haut
+            for (let x = startX; x < endX; x += 3) {
+                const y = startY;
+                if (y >= 0 && y < imageData.height) {
                     const i = (y * canvasWidth + x) * 4;
-                    
-                    // Pixel actuel
                     const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const above = y > 0 ? (data[((y-1) * canvasWidth + x) * 4] + data[((y-1) * canvasWidth + x) * 4 + 1] + data[((y-1) * canvasWidth + x) * 4 + 2]) / 3 : 0;
                     
-                    // Pixels voisins
-                    const right = (data[i + 4] + data[i + 5] + data[i + 6]) / 3;
-                    const bottom = (data[i + canvasWidth * 4] + data[i + canvasWidth * 4 + 1] + data[i + canvasWidth * 4 + 2]) / 3;
-                    
-                    // Différences
-                    const diffRight = Math.abs(current - right);
-                    const diffBottom = Math.abs(current - bottom);
-                    
-                    // Contour fort si différence > 40
-                    if (diffRight > 40 || diffBottom > 40) {
-                        strongEdges++;
+                    if (Math.abs(current - above) > 30) {
+                        frameEdges++;
                     }
                     totalChecks++;
                 }
             }
             
-            return totalChecks > 0 ? Math.min(strongEdges / (totalChecks * 0.3), 1) : 0;
+            // Bords gauche et droit
+            for (let y = startY; y < endY; y += 3) {
+                // Gauche
+                const xLeft = startX;
+                if (xLeft >= 0 && xLeft < canvasWidth) {
+                    const i = (y * canvasWidth + xLeft) * 4;
+                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const left = xLeft > 0 ? (data[(y * canvasWidth + (xLeft-1)) * 4] + data[(y * canvasWidth + (xLeft-1)) * 4 + 1] + data[(y * canvasWidth + (xLeft-1)) * 4 + 2]) / 3 : 0;
+                    
+                    if (Math.abs(current - left) > 30) {
+                        frameEdges++;
+                    }
+                    totalChecks++;
+                }
+                
+                // Droite
+                const xRight = endX - 1;
+                if (xRight >= 0 && xRight < canvasWidth) {
+                    const i = (y * canvasWidth + xRight) * 4;
+                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const right = xRight < canvasWidth-1 ? (data[(y * canvasWidth + (xRight+1)) * 4] + data[(y * canvasWidth + (xRight+1)) * 4 + 1] + data[(y * canvasWidth + (xRight+1)) * 4 + 2]) / 3 : 0;
+                    
+                    if (Math.abs(current - right) > 30) {
+                        frameEdges++;
+                    }
+                    totalChecks++;
+                }
+            }
+            
+            return totalChecks > 0 ? Math.min(frameEdges / (totalChecks * 0.25), 1) : 0;
         }
 
         // Détecter la structure rectangulaire
@@ -770,90 +994,90 @@
             const startY = Math.max(0, centerY - height/2);
             const endY = Math.min(imageData.height, centerY + height/2);
             
-            // Analyser le haut de la zone (barre transversale)
-            let topEdgeStrength = 0;
-            const topY = startY + 5;
-            for (let x = startX; x < endX; x += 3) {
-                if (topY < imageData.height) {
-                    const i = (topY * canvasWidth + x) * 4;
-                    const topAbove = topY > 0 ? (data[((topY-1) * canvasWidth + x) * 4] + data[((topY-1) * canvasWidth + x) * 4 + 1] + data[((topY-1) * canvasWidth + x) * 4 + 2]) / 3 : 0;
-                    const topCurrent = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            // Analyser les coins du rectangle
+            let cornerScore = 0;
+            const corners = [
+                {x: startX, y: startY}, // Haut-gauche
+                {x: endX-1, y: startY}, // Haut-droite
+                {x: startX, y: endY-1}, // Bas-gauche
+                {x: endX-1, y: endY-1}  // Bas-droite
+            ];
+            
+            corners.forEach(corner => {
+                if (corner.x >= 0 && corner.x < canvasWidth && corner.y >= 0 && corner.y < imageData.height) {
+                    const i = (corner.y * canvasWidth + corner.x) * 4;
+                    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
                     
-                    if (Math.abs(topAbove - topCurrent) > 30) {
-                        topEdgeStrength++;
+                    // Rechercher des contrastes autour du coin
+                    let maxContrast = 0;
+                    for (let dy = -2; dy <= 2; dy++) {
+                        for (let dx = -2; dx <= 2; dx++) {
+                            const nx = corner.x + dx;
+                            const ny = corner.y + dy;
+                            if (nx >= 0 && nx < canvasWidth && ny >= 0 && ny < imageData.height) {
+                                const ni = (ny * canvasWidth + nx) * 4;
+                                const nBrightness = (data[ni] + data[ni + 1] + data[ni + 2]) / 3;
+                                maxContrast = Math.max(maxContrast, Math.abs(brightness - nBrightness));
+                            }
+                        }
+                    }
+                    
+                    if (maxContrast > 40) {
+                        cornerScore++;
                     }
                 }
-            }
+            });
             
-            // Analyser les côtés (poteaux)
-            let leftEdgeStrength = 0;
-            let rightEdgeStrength = 0;
-            const leftX = startX + 5;
-            const rightX = endX - 5;
-            
-            for (let y = startY; y < endY; y += 3) {
-                // Côté gauche
-                if (leftX > 0 && leftX < canvasWidth) {
-                    const i = (y * canvasWidth + leftX) * 4;
-                    const leftLeft = (data[(y * canvasWidth + (leftX-1)) * 4] + data[(y * canvasWidth + (leftX-1)) * 4 + 1] + data[(y * canvasWidth + (leftX-1)) * 4 + 2]) / 3;
-                    const leftCurrent = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    
-                    if (Math.abs(leftLeft - leftCurrent) > 30) {
-                        leftEdgeStrength++;
-                    }
-                }
-                
-                // Côté droit
-                if (rightX > 0 && rightX < canvasWidth) {
-                    const i = (y * canvasWidth + rightX) * 4;
-                    const rightRight = rightX < canvasWidth-1 ? (data[(y * canvasWidth + (rightX+1)) * 4] + data[(y * canvasWidth + (rightX+1)) * 4 + 1] + data[(y * canvasWidth + (rightX+1)) * 4 + 2]) / 3 : 0;
-                    const rightCurrent = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    
-                    if (Math.abs(rightRight - rightCurrent) > 30) {
-                        rightEdgeStrength++;
-                    }
-                }
-            }
-            
-            // Score basé sur la présence des 3 côtés
-            const topScore = Math.min(topEdgeStrength / 10, 1);
-            const sideScore = Math.min((leftEdgeStrength + rightEdgeStrength) / 20, 1);
-            
-            return (topScore + sideScore) / 2;
+            return cornerScore / 4; // Score basé sur les 4 coins
         }
 
-        // Détecter les objets clairs (seuil plus bas)
-        function detectLightObjects(imageData, centerX, centerY, width, height) {
+        // Détecter les poteaux de but (objets verticaux clairs)
+        function detectGoalPosts(imageData, centerX, centerY, width, height) {
             const data = imageData.data;
             const canvasWidth = imageData.width;
             
-            let lightPixels = 0;
-            let totalPixels = 0;
+            let postScore = 0;
+            let totalChecks = 0;
             
             const startX = Math.max(0, centerX - width/2);
             const endX = Math.min(canvasWidth, centerX + width/2);
             const startY = Math.max(0, centerY - height/2);
             const endY = Math.min(imageData.height, centerY + height/2);
             
+            // Zones des poteaux (gauche et droite)
+            const postWidth = Math.floor(width * 0.1); // 10% de la largeur pour chaque poteau
+            
+            // Poteau gauche
             for (let y = startY; y < endY; y += 2) {
-                for (let x = startX; x < endX; x += 2) {
-                    const i = (y * canvasWidth + x) * 4;
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    
-                    // Luminosité
-                    const brightness = (r + g + b) / 3;
-                    
-                    // Plus tolérant : objets gris/blancs/métalliques
-                    if (brightness > 120) {
-                        lightPixels++;
+                for (let x = startX; x < startX + postWidth; x += 2) {
+                    if (x >= 0 && x < canvasWidth) {
+                        const i = (y * canvasWidth + x) * 4;
+                        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        
+                        if (brightness > 100) { // Objet relativement clair
+                            postScore++;
+                        }
+                        totalChecks++;
                     }
-                    totalPixels++;
                 }
             }
             
-            return totalPixels > 0 ? Math.min(lightPixels / (totalPixels * 0.4), 1) : 0;
+            // Poteau droit
+            for (let y = startY; y < endY; y += 2) {
+                for (let x = endX - postWidth; x < endX; x += 2) {
+                    if (x >= 0 && x < canvasWidth) {
+                        const i = (y * canvasWidth + x) * 4;
+                        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                        
+                        if (brightness > 100) { // Objet relativement clair
+                            postScore++;
+                        }
+                        totalChecks++;
+                    }
+                }
+            }
+            
+            return totalChecks > 0 ? Math.min(postScore / (totalChecks * 0.3), 1) : 0;
         }
 
         function toggleAlignmentDetection() {
@@ -870,17 +1094,17 @@
                     // Supprimer les classes précédentes
                     goalFrame.classList.remove('aligned', 'partial');
                     
-                    // Seuils BEAUCOUP plus bas et réalistes
-                    if (confidence > 0.35) {
+                    // Seuils adaptés pour le contour
+                    if (confidence > 0.4) {
                         goalFrame.classList.add('aligned');
-                        updateStatus('✅ PARFAIT ! Cage bien alignée');
-                    } else if (confidence > 0.15) {
+                        updateStatus('✅ PARFAIT ! Cage parfaitement alignée dans le contour');
+                    } else if (confidence > 0.2) {
                         goalFrame.classList.add('partial');
-                        updateStatus('🟠 Cage détectée - Affinez l\'alignement');
+                        updateStatus('🟠 Cage détectée - Ajustez l\'alignement');
                     } else {
                         updateStatus('🔍 Pointez vers une cage de football...');
                     }
-                }, 300); // Vérifier toutes les 300ms
+                }, 300);
                 
             } else {
                 alignmentDetector.textContent = 'Détecter alignement';
@@ -923,317 +1147,3 @@
                 }
 
                 // Le reste sera géré dans l'event listener fullscreenchange
-                
-            } catch (error) {
-                console.log('Fullscreen API non disponible, utilisation du fallback');
-                fallbackFullscreen();
-            }
-        }
-
-        // Mode fullscreen de fallback
-        function fallbackFullscreen() {
-            isFullscreen = true;
-            
-            // Ajouter la classe fullscreen
-            videoContainer.classList.add('fullscreen-mode');
-            
-            // Créer l'interface fullscreen
-            createFullscreenInterface();
-            
-            // Masquer le body scroll
-            document.body.style.overflow = 'hidden';
-            
-            // Mettre à jour le bouton principal
-            fullscreenBtn.textContent = '🔲 Quitter FS';
-            
-            updateStatus('📱 Mode plein écran activé !');
-        }
-
-        // Créer l'interface fullscreen
-        function createFullscreenInterface() {
-            // Créer les contrôles fullscreen
-            const fullscreenControls = document.createElement('div');
-            fullscreenControls.className = 'fullscreen-controls';
-            fullscreenControls.id = 'fullscreenControls';
-            
-            fullscreenControls.innerHTML = `
-                <button class="fullscreen-btn" onclick="flipCamera()">🔄</button>
-                <button class="fullscreen-btn record" id="fullscreenRecordBtn" onclick="toggleRecording()">●</button>
-            `;
-            
-            // Bouton sortir du fullscreen
-            const exitBtn = document.createElement('button');
-            exitBtn.className = 'fullscreen-exit';
-            exitBtn.textContent = '✕ Sortir';
-            exitBtn.onclick = exitFullscreen;
-            
-            // Ajouter les éléments (PAS de duplication du toggle overlay)
-            videoContainer.appendChild(fullscreenControls);
-            videoContainer.appendChild(exitBtn);
-        }
-
-        // Sortir du mode plein écran
-        function exitFullscreen() {
-            try {
-                if (document.fullscreenElement || document.webkitFullscreenElement || 
-                    document.mozFullScreenElement || document.msFullscreenElement) {
-                    // Sortir du vrai fullscreen
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    } else if (document.webkitExitFullscreen) {
-                        document.webkitExitFullscreen();
-                    } else if (document.mozCancelFullScreen) {
-                        document.mozCancelFullScreen();
-                    } else if (document.msExitFullscreen) {
-                        document.msExitFullscreen();
-                    }
-                } else {
-                    // Sortir du mode fallback
-                    cleanupFullscreen();
-                }
-            } catch (error) {
-                cleanupFullscreen();
-            }
-        }
-
-        // Nettoyer l'interface fullscreen
-        function cleanupFullscreen() {
-            isFullscreen = false;
-            
-            if (alignmentDetectionActive) {
-                toggleAlignmentDetection();
-            }
-            
-            // Supprimer la classe fullscreen
-            videoContainer.classList.remove('fullscreen-mode');
-            
-            // Supprimer les contrôles fullscreen
-            const fullscreenControls = document.getElementById('fullscreenControls');
-            const exitBtn = videoContainer.querySelector('.fullscreen-exit');
-            
-            if (fullscreenControls) fullscreenControls.remove();
-            if (exitBtn) exitBtn.remove();
-            
-            // Restaurer le body scroll
-            document.body.style.overflow = '';
-            
-            // Mettre à jour le bouton principal
-            fullscreenBtn.textContent = '🔳 Plein Écran';
-            
-            updateStatus('📱 Mode normal restauré');
-        }
-
-        // Event listeners pour le fullscreen natif
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-        function handleFullscreenChange() {
-            if (document.fullscreenElement || document.webkitFullscreenElement || 
-                document.mozFullScreenElement || document.msFullscreenElement) {
-                // Entré en fullscreen
-                isFullscreen = true;
-                createFullscreenInterface();
-                fullscreenBtn.textContent = '🔲 Quitter FS';
-                updateStatus('📱 Mode plein écran activé - Barres Safari masquées !');
-            } else {
-                // Sorti du fullscreen
-                cleanupFullscreen();
-            }
-        }
-
-        async function flipCamera() {
-            facingMode = facingMode === 'environment' ? 'user' : 'environment';
-            await startCamera();
-        }
-
-        // Basculer l'enregistrement
-        function toggleRecording() {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
-        }
-
-        // Démarrer l'enregistrement - VERSION SIMPLE QUI MARCHE
-        function startRecording() {
-            try {
-                if (!stream) {
-                    updateStatus('❌ Aucun stream caméra disponible');
-                    return;
-                }
-
-                recordedChunks = [];
-                
-                // SIMPLE : Pas de mimeType du tout, on laisse le navigateur décider
-                console.log('🎥 Création MediaRecorder sans mimeType');
-                mediaRecorder = new MediaRecorder(stream);
-
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                        console.log('📦 Chunk:', event.data.size, 'bytes');
-                    }
-                };
-
-                mediaRecorder.onstop = () => {
-                    console.log('⏹️ Arrêt, chunks:', recordedChunks.length);
-                    createDownloadLink();
-                };
-
-                mediaRecorder.onerror = (event) => {
-                    console.error('💥 Erreur:', event.error);
-                    updateStatus(`❌ Erreur: ${event.error.message}`);
-                    isRecording = false;
-                    updateRecordingInterface(false);
-                };
-
-                // Démarrer SANS options
-                mediaRecorder.start();
-                isRecording = true;
-                updateRecordingInterface(true);
-                updateStatus('🔴 Enregistrement...');
-
-            } catch (error) {
-                console.error('💥 Erreur:', error);
-                updateStatus(`❌ Erreur: ${error.message}`);
-            }
-        }
-
-        // Fonction pour mettre à jour l'interface d'enregistrement
-        function updateRecordingInterface(recording) {
-            if (recording) {
-                recordBtn.innerHTML = 'Arrêter';
-                recordBtn.className = 'btn btn-success';
-                recordingIndicator.classList.add('active');
-                flipBtn.disabled = true;
-                fullscreenBtn.disabled = true;
-                
-                // Mettre à jour le bouton fullscreen si présent
-                const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
-                if (fullscreenRecordBtn) {
-                    fullscreenRecordBtn.innerHTML = '■';
-                }
-            } else {
-                recordBtn.innerHTML = 'Enregistrer';
-                recordBtn.className = 'btn btn-success';
-                recordingIndicator.classList.remove('active');
-                flipBtn.disabled = false;
-                fullscreenBtn.disabled = false;
-                
-                // Mettre à jour le bouton fullscreen si présent
-                const fullscreenRecordBtn = document.getElementById('fullscreenRecordBtn');
-                if (fullscreenRecordBtn) {
-                    fullscreenRecordBtn.innerHTML = '●';
-                }
-            }
-        }
-
-        // Arrêter l'enregistrement
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                console.log('🛑 Arrêt de l\'enregistrement...');
-                
-                try {
-                    mediaRecorder.stop();
-                    isRecording = false;
-                    updateRecordingInterface(false);
-                    updateStatus('🔄 Traitement de la vidéo...');
-                } catch (error) {
-                    console.error('Erreur lors de l\'arrêt:', error);
-                    updateStatus('❌ Erreur lors de l\'arrêt de l\'enregistrement');
-                    isRecording = false;
-                    updateRecordingInterface(false);
-                }
-            }
-        }
-
-        // Créer le lien de téléchargement
-        function createDownloadLink() {
-            if (recordedChunks.length === 0) {
-                updateStatus('❌ Aucune donnée enregistrée');
-                return;
-            }
-
-            // Détecter le type MIME et l'extension appropriée
-            let mimeType = 'video/webm'; // Fallback par défaut
-            let fileExtension = 'webm';
-            
-            if (recordedChunks[0] && recordedChunks[0].type) {
-                mimeType = recordedChunks[0].type;
-                console.log('Type MIME détecté:', mimeType);
-                
-                // Déterminer l'extension en fonction du type
-                if (mimeType.includes('mp4')) {
-                    fileExtension = 'mp4';
-                } else if (mimeType.includes('webm')) {
-                    fileExtension = 'webm';
-                } else if (mimeType.includes('ogg')) {
-                    fileExtension = 'ogv';
-                }
-            }
-            
-            const blob = new Blob(recordedChunks, { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
-            
-            console.log(`Blob créé: ${sizeMB}MB, type: ${mimeType}, extension: ${fileExtension}`);
-
-            // Préparer le téléchargement
-            downloadBtn.onclick = () => {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `penalty_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${fileExtension}`;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                // Message de confirmation
-                updateStatus(`✅ Téléchargement lancé ! Vidéo sauvée en .${fileExtension}`);
-            };
-
-            downloadBtn.classList.remove('hidden');
-            updateStatus(`✅ Vidéo prête (${sizeMB} MB, .${fileExtension}) ! Cliquez sur Télécharger`);
-        }
-
-        // Télécharger la vidéo
-        function downloadVideo() {
-            downloadBtn.onclick();
-        }
-
-        // Basculer l'overlay
-        overlayToggle.addEventListener('click', () => {
-            overlayVisible = !overlayVisible;
-            goalOverlay.style.display = overlayVisible ? 'block' : 'none';
-            overlayToggle.textContent = overlayVisible ? 'Masquer overlay' : 'Afficher overlay';
-        });
-
-        // Event listener pour la détection d'alignement
-        alignmentDetector.addEventListener('click', toggleAlignmentDetection);
-
-        // Vérifications de base
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!navigator.mediaDevices?.getUserMedia) {
-                updateStatus('❌ Caméra non supportée');
-                return;
-            }
-            if (!window.MediaRecorder) {
-                updateStatus('❌ Enregistrement non supporté');
-                return;
-            }
-            updateStatus('📱 Prêt à filmer !');
-        });
-
-        // Empêcher la mise en veille
-        if ('wakeLock' in navigator) {
-            navigator.wakeLock.request('screen').catch(() => {
-                console.log('Wake lock non disponible');
-            });
-        }
-    </script>
-</body>
-</html>
