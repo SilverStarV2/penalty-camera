@@ -316,7 +316,33 @@
             display: none !important;
         }
 
-        /* Responsive mobile */
+        /* Fullscreen natif - masquer complètement Safari */
+        .video-container:-webkit-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #000 !important;
+        }
+
+        .video-container:-moz-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #000 !important;
+        }
+
+        .video-container:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #000 !important;
+        }
+
+        /* S'assurer que la vidéo remplit tout l'écran en fullscreen natif */
+        .video-container:-webkit-full-screen #camera,
+        .video-container:-moz-full-screen #camera,
+        .video-container:fullscreen #camera {
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: cover !important;
+        }
         @media (max-width: 768px) {
             .main-container {
                 padding: 15px;
@@ -686,31 +712,39 @@
         // Entrer en mode plein écran
         function enterFullscreen() {
             try {
+                // Forcer l'utilisation de l'API fullscreen native pour masquer Safari
                 if (videoContainer.requestFullscreen) {
                     videoContainer.requestFullscreen();
                 } else if (videoContainer.webkitRequestFullscreen) {
-                    videoContainer.webkitRequestFullscreen();
+                    // Safari - utiliser webkitRequestFullscreen avec options
+                    videoContainer.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
                 } else if (videoContainer.mozRequestFullScreen) {
                     videoContainer.mozRequestFullScreen();
                 } else if (videoContainer.msRequestFullscreen) {
                     videoContainer.msRequestFullscreen();
                 } else {
+                    // Fallback seulement si vraiment pas d'autre choix
                     fallbackFullscreen();
                     return;
                 }
+                
+                // Ne pas créer l'interface tout de suite, 
+                // attendre l'event fullscreenchange
+                
             } catch (error) {
+                console.log('API Fullscreen échouée, fallback:', error);
                 fallbackFullscreen();
             }
         }
 
-        // Mode fullscreen de fallback
+        // Mode fullscreen de fallback (seulement si API native échoue)
         function fallbackFullscreen() {
             isFullscreen = true;
             videoContainer.classList.add('fullscreen-mode');
             createFullscreenInterface();
             document.body.style.overflow = 'hidden';
             fullscreenBtn.textContent = 'Quitter FS';
-            updateStatus('Mode plein écran activé !');
+            updateStatus('Mode plein écran activé (fallback)');
         }
 
         // Créer l'interface fullscreen
@@ -788,11 +822,14 @@
         function handleFullscreenChange() {
             if (document.fullscreenElement || document.webkitFullscreenElement || 
                 document.mozFullScreenElement || document.msFullscreenElement) {
+                // Entré en VRAI fullscreen - barres Safari masquées !
                 isFullscreen = true;
+                videoContainer.classList.add('fullscreen-mode');
                 createFullscreenInterface();
                 fullscreenBtn.textContent = 'Quitter FS';
-                updateStatus('Mode plein écran activé !');
+                updateStatus('🎯 Fullscreen natif - Barres Safari masquées !');
             } else {
+                // Sorti du fullscreen
                 cleanupFullscreen();
             }
         }
