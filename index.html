@@ -81,12 +81,13 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 3px;  /* Plus fin, proportionnel */
+            width: 3px;
             height: 94px;
             background: rgba(255, 255, 255, 1);
             border-radius: 1.5px;
             box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             z-index: 10;
+            transition: all 0.3s ease;
         }
 
         /* Montant droit */
@@ -94,12 +95,13 @@
             position: absolute;
             top: 0;
             right: 0;
-            width: 3px;  /* Plus fin, proportionnel */
+            width: 3px;
             height: 94px;
             background: rgba(255, 255, 255, 1);
             border-radius: 1.5px;
             box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             z-index: 10;
+            transition: all 0.3s ease;
         }
 
         /* Barre horizontale */
@@ -108,11 +110,41 @@
             top: 0;
             left: 0;
             width: 280px;
-            height: 3px;  /* Plus fin, proportionnel */
+            height: 3px;
             background: rgba(255, 255, 255, 1);
             border-radius: 1.5px;
             box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
             z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        /* État aligné - barres vertes */
+        .goal-frame.aligned .goal-left-post,
+        .goal-frame.aligned .goal-right-post,
+        .goal-frame.aligned .goal-crossbar {
+            background: rgba(0, 255, 0, 1);
+            box-shadow: 0 0 12px rgba(0, 255, 0, 0.8);
+        }
+
+        /* Bouton de détection d'alignement */
+        .alignment-detector {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 15;
+        }
+
+        .alignment-detector.active {
+            background: rgba(0, 255, 0, 0.8);
+            color: black;
         }
 
         .controls {
@@ -479,21 +511,21 @@
         }
 
         /* FULLSCREEN PAYSAGE - COMME TA PHOTO EXACTEMENT */
-    .fullscreen-mode .goal-frame {
-        width: 60vw !important;                /* Largeur dynamique = 72% de l’écran */
-        height: calc(60vw / 3) !important;     /* Hauteur pour un ratio 3:1 */
-    }
-
-    .fullscreen-mode .goal-left-post, 
-    .fullscreen-mode .goal-right-post {
-        width: 0.8vw !important;
-        height: calc(60vw / 3) !important;
-    }
-
-    .fullscreen-mode .goal-crossbar {
-        width: 60vw !important;
-        height: 0.8vw !important;
-    }
+        .fullscreen-mode .goal-frame {
+            width: 612px !important;  /* Basé sur analyse de ta photo - 72% écran */
+            height: 204px !important; /* Ratio FIFA 3:1 exact */
+        }
+        
+        .fullscreen-mode .goal-left-post, 
+        .fullscreen-mode .goal-right-post {
+            width: 6px !important;
+            height: 204px !important;
+        }
+        
+        .fullscreen-mode .goal-crossbar {
+            width: 612px !important;
+            height: 6px !important;
+        }
     </style>
 </head>
 <body>
@@ -524,6 +556,10 @@
                 
                 <button class="overlay-toggle" id="overlayToggle">
                     Masquer overlay
+                </button>
+                
+                <button class="alignment-detector" id="alignmentDetector" onclick="toggleAlignmentDetection()">
+                    Détecter alignement
                 </button>
             </div>
 
@@ -561,6 +597,8 @@
         let facingMode = 'environment';
         let overlayVisible = true;
         let isFullscreen = false;
+        let alignmentDetectionActive = false;
+        let alignmentCheckInterval = null;
 
         // Éléments DOM
         const status = document.getElementById('status');
@@ -573,8 +611,110 @@
         const overlayToggle = document.getElementById('overlayToggle');
         const recordingIndicator = document.getElementById('recordingIndicator');
         const videoContainer = document.querySelector('.video-container');
+        const alignmentDetector = document.getElementById('alignmentDetector');
+        const goalFrame = document.querySelector('.goal-frame');
 
-        // Fonction pour mettre à jour le statut
+        // Fonction de détection d'alignement (simplifiée)
+        function detectGoalAlignment() {
+            if (!camera || !stream) return false;
+
+            // Créer un canvas temporaire pour analyser l'image
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = camera.videoWidth || 640;
+            canvas.height = camera.videoHeight || 480;
+            
+            try {
+                // Dessiner la frame vidéo actuelle
+                ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
+                
+                // Obtenir les données d'image
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Zones de vérification (positions approximatives des poteaux)
+                const leftPostX = Math.floor(canvas.width * 0.25);
+                const rightPostX = Math.floor(canvas.width * 0.75);
+                const crossbarY = Math.floor(canvas.height * 0.3);
+                const postHeight = Math.floor(canvas.height * 0.4);
+                
+                let whitePixelsLeft = 0;
+                let whitePixelsRight = 0;
+                let whitePixelsCrossbar = 0;
+                
+                // Vérifier les poteaux gauche et droit (lignes verticales blanches)
+                for (let y = crossbarY; y < crossbarY + postHeight; y += 5) {
+                    for (let x = leftPostX - 10; x < leftPostX + 10; x++) {
+                        const index = (y * canvas.width + x) * 4;
+                        const brightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
+                        if (brightness > 200) whitePixelsLeft++;
+                    }
+                    
+                    for (let x = rightPostX - 10; x < rightPostX + 10; x++) {
+                        const index = (y * canvas.width + x) * 4;
+                        const brightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
+                        if (brightness > 200) whitePixelsRight++;
+                    }
+                }
+                
+                // Vérifier la barre transversale (ligne horizontale blanche)
+                for (let x = leftPostX; x < rightPostX; x += 5) {
+                    for (let y = crossbarY - 5; y < crossbarY + 5; y++) {
+                        const index = (y * canvas.width + x) * 4;
+                        const brightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
+                        if (brightness > 200) whitePixelsCrossbar++;
+                    }
+                }
+                
+                // Seuils de détection (ajustables)
+                const threshold = 50;
+                const isAligned = whitePixelsLeft > threshold && 
+                                whitePixelsRight > threshold && 
+                                whitePixelsCrossbar > threshold;
+                
+                return isAligned;
+                
+            } catch (error) {
+                console.log('Erreur détection:', error);
+                return false;
+            }
+        }
+
+        // Basculer la détection d'alignement
+        function toggleAlignmentDetection() {
+            alignmentDetectionActive = !alignmentDetectionActive;
+            
+            if (alignmentDetectionActive) {
+                alignmentDetector.textContent = 'Arrêter détection';
+                alignmentDetector.classList.add('active');
+                updateStatus('Détection d\'alignement activée - bougez pour aligner');
+                
+                // Vérifier l'alignement toutes les 500ms
+                alignmentCheckInterval = setInterval(() => {
+                    const isAligned = detectGoalAlignment();
+                    
+                    if (isAligned) {
+                        goalFrame.classList.add('aligned');
+                        updateStatus('✅ ALIGNÉ ! Les barres sont vertes');
+                    } else {
+                        goalFrame.classList.remove('aligned');
+                        updateStatus('Alignement en cours... Ajustez votre position');
+                    }
+                }, 500);
+                
+            } else {
+                alignmentDetector.textContent = 'Détecter alignement';
+                alignmentDetector.classList.remove('active');
+                goalFrame.classList.remove('aligned');
+                updateStatus('Détection d\'alignement désactivée');
+                
+                if (alignmentCheckInterval) {
+                    clearInterval(alignmentCheckInterval);
+                    alignmentCheckInterval = null;
+                }
+            }
+        }
         function updateStatus(message, type = 'info') {
             status.innerHTML = message;
             console.log(message);
@@ -678,9 +818,9 @@
             document.body.style.overflow = 'hidden';
             
             // Mettre à jour le bouton principal
-            fullscreenBtn.textContent = '🔲 Quitter FS';
+            fullscreenBtn.textContent = 'Quitter FS';
             
-            updateStatus('📱 Mode plein écran activé !');
+            updateStatus('Mode plein écran activé !');
         }
 
         // Créer l'interface fullscreen
@@ -715,7 +855,7 @@
             const statusFs = document.createElement('div');
             statusFs.className = 'fullscreen-status';
             statusFs.id = 'fullscreenStatus';
-            statusFs.textContent = 'Mode plein écran - Cadrez parfaitement votre penalty';
+            statusFs.textContent = 'Mode plein écran - Activez la détection pour aligner';
             
             // Ajouter les éléments
             videoContainer.appendChild(fullscreenControls);
@@ -752,6 +892,11 @@
         function cleanupFullscreen() {
             isFullscreen = false;
             
+            // Arrêter la détection d'alignement si active
+            if (alignmentDetectionActive) {
+                toggleAlignmentDetection();
+            }
+            
             // Supprimer la classe fullscreen
             videoContainer.classList.remove('fullscreen-mode');
             
@@ -770,9 +915,9 @@
             document.body.style.overflow = '';
             
             // Mettre à jour le bouton principal
-            fullscreenBtn.textContent = '🔳 Plein Écran';
+            fullscreenBtn.textContent = 'Plein Écran';
             
-            updateStatus('📱 Mode normal restauré');
+            updateStatus('Mode normal restauré');
         }
 
         // Event listeners pour le fullscreen natif
@@ -787,56 +932,26 @@
                 // Entré en fullscreen
                 isFullscreen = true;
                 createFullscreenInterface();
-                fullscreenBtn.textContent = '🔲 Quitter FS';
-                updateStatus('📱 Mode plein écran activé - Barres Safari masquées !');
+                fullscreenBtn.textContent = 'Quitter FS';
+                updateStatus('Mode plein écran activé - Barres Safari masquées !');
             } else {
                 // Sorti du fullscreen
                 cleanupFullscreen();
             }
         }
 
-        // Changer le zoom et ajuster l'overlay
-        function changeZoom() {
-            currentZoom = parseFloat(zoomSelector.value);
-            
-            // Supprimer les anciennes classes de zoom
-            goalFrame.classList.remove('zoom-06', 'zoom-1', 'zoom-2');
-            
-            // Ajouter la nouvelle classe selon le zoom
-            switch(currentZoom) {
-                case 0.6:
-                    goalFrame.classList.add('zoom-06');
-                    updateStatus('📐 Overlay ajusté pour ultra wide x0.6');
-                    break;
-                case 1:
-                    goalFrame.classList.add('zoom-1');
-                    updateStatus('📐 Overlay ajusté pour standard x1');
-                    break;
-                case 2:
-                    goalFrame.classList.add('zoom-2');
-                    updateStatus('📐 Overlay ajusté pour zoom x2');
-                    break;
-            }
-            
-            console.log(`Zoom changé: x${currentZoom}`);
-        }
-
-        // Initialiser l'overlay au chargement
+        // Vérifications de base
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialiser avec zoom x1
-            goalFrame.classList.add('zoom-1');
-            
             if (!navigator.mediaDevices?.getUserMedia) {
-                updateStatus('❌ Caméra non supportée');
+                updateStatus('Caméra non supportée');
                 return;
             }
             if (!window.MediaRecorder) {
-                updateStatus('❌ Enregistrement non supporté');
+                updateStatus('Enregistrement non supporté');
                 return;
             }
-            updateStatus('📱 Prêt à filmer ! Choisissez votre zoom');
+            updateStatus('Prêt à filmer ! Activez la détection d\'alignement');
         });
-        async function flipCamera() {
             facingMode = facingMode === 'environment' ? 'user' : 'environment';
             await startCamera();
         }
@@ -854,7 +969,7 @@
         function startRecording() {
             try {
                 if (!stream) {
-                    updateStatus('❌ Aucun stream caméra disponible');
+                    updateStatus('Aucun stream caméra disponible');
                     return;
                 }
 
@@ -878,7 +993,7 @@
 
                 mediaRecorder.onerror = (event) => {
                     console.error('💥 Erreur:', event.error);
-                    updateStatus(`❌ Erreur: ${event.error.message}`);
+                    updateStatus(`Erreur: ${event.error.message}`);
                     isRecording = false;
                     updateRecordingInterface(false);
                 };
@@ -887,11 +1002,11 @@
                 mediaRecorder.start();
                 isRecording = true;
                 updateRecordingInterface(true);
-                updateStatus('🔴 Enregistrement...');
+                updateStatus('Enregistrement...');
 
             } catch (error) {
                 console.error('💥 Erreur:', error);
-                updateStatus(`❌ Erreur: ${error.message}`);
+                updateStatus(`Erreur: ${error.message}`);
             }
         }
 
@@ -939,10 +1054,10 @@
                     mediaRecorder.stop();
                     isRecording = false;
                     updateRecordingInterface(false);
-                    updateStatus('🔄 Traitement de la vidéo...');
+                    updateStatus('Traitement de la vidéo...');
                 } catch (error) {
                     console.error('Erreur lors de l\'arrêt:', error);
-                    updateStatus('❌ Erreur lors de l\'arrêt de l\'enregistrement');
+                    updateStatus('Erreur lors de l\'arrêt de l\'enregistrement');
                     resetRecordingInterface();
                 }
             }
@@ -951,7 +1066,7 @@
         // Créer le lien de téléchargement
         function createDownloadLink() {
             if (recordedChunks.length === 0) {
-                updateStatus('❌ Aucune donnée enregistrée');
+                updateStatus('Aucune donnée enregistrée');
                 return;
             }
 
@@ -991,11 +1106,11 @@
                 URL.revokeObjectURL(url);
                 
                 // Message de confirmation
-                updateStatus(`✅ Téléchargement lancé ! Vidéo sauvée en .${fileExtension}`);
+                updateStatus(`Téléchargement lancé ! Vidéo sauvée en .${fileExtension}`);
             };
 
             downloadBtn.classList.remove('hidden');
-            updateStatus(`✅ Vidéo prête (${sizeMB} MB, .${fileExtension}) ! Cliquez sur Télécharger`);
+            updateStatus(`Vidéo prête (${sizeMB} MB, .${fileExtension}) ! Cliquez sur Télécharger`);
         }
 
         // Télécharger la vidéo
