@@ -890,7 +890,7 @@
             }
         }
 
-        // DÉTECTION D'ALIGNEMENT AMÉLIORÉE pour le contour
+        // DÉTECTION HYBRIDE AMÉLIORÉE - COMBINAISON DE PLUSIEURS TECHNIQUES
         function detectGoalAlignment() {
             if (!camera.videoWidth || !camera.videoHeight) return 0;
 
@@ -906,29 +906,28 @@
             const overlayWidth = Math.floor(detectionCanvas.width * 0.35);
             const overlayHeight = Math.floor(detectionCanvas.height * 0.15);
             
-            // 1. Détecter les contours forts dans la zone du contour
-            const edgeScore = detectFrameEdges(imageData, centerX, centerY, overlayWidth, overlayHeight);
+            // DÉTECTION HYBRIDE - Combiner plusieurs techniques
+            const scores = {
+                edges: detectStrongEdges(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.3,
+                colors: detectGoalColors(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.2,
+                geometry: detectRectangularShape(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.3,
+                symmetry: checkSymmetry(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.1,
+                contrast: analyzeContrast(imageData, centerX, centerY, overlayWidth, overlayHeight) * 0.1
+            };
             
-            // 2. Détecter la structure rectangulaire
-            const structureScore = detectRectangularStructure(imageData, centerX, centerY, overlayWidth, overlayHeight);
+            const finalScore = Object.values(scores).reduce((a, b) => a + b, 0);
             
-            // 3. Détecter les objets clairs qui correspondent aux poteaux
-            const lightObjectScore = detectGoalPosts(imageData, centerX, centerY, overlayWidth, overlayHeight);
-            
-            // Score final - pondération pour le contour
-            const finalScore = (edgeScore * 0.5 + structureScore * 0.3 + lightObjectScore * 0.2);
-            
-            console.log(`🎯 Edge=${edgeScore.toFixed(2)} | Struct=${structureScore.toFixed(2)} | Light=${lightObjectScore.toFixed(2)} | Final=${finalScore.toFixed(2)}`);
+            console.log(`🎯 Hybrid Detection - Edges: ${scores.edges.toFixed(2)} | Colors: ${scores.colors.toFixed(2)} | Geometry: ${scores.geometry.toFixed(2)} | Symmetry: ${scores.symmetry.toFixed(2)} | Contrast: ${scores.contrast.toFixed(2)} | Final: ${finalScore.toFixed(2)}`);
             
             return finalScore;
         }
 
-        // Détecter les contours le long du périmètre du cadre
-        function detectFrameEdges(imageData, centerX, centerY, width, height) {
+        // 1. DÉTECTION DES CONTOURS FORTS
+        function detectStrongEdges(imageData, centerX, centerY, width, height) {
             const data = imageData.data;
             const canvasWidth = imageData.width;
             
-            let frameEdges = 0;
+            let strongEdges = 0;
             let totalChecks = 0;
             
             const startX = Math.max(1, centerX - width/2);
@@ -936,148 +935,208 @@
             const startY = Math.max(1, centerY - height/2);
             const endY = Math.min(imageData.height-1, centerY + height/2);
             
-            // Vérifier les bords du cadre (périmètre)
-            // Bord haut
-            for (let x = startX; x < endX; x += 3) {
-                const y = startY;
-                if (y >= 0 && y < imageData.height) {
+            for (let y = startY; y < endY; y += 2) {
+                for (let x = startX; x < endX; x += 2) {
                     const i = (y * canvasWidth + x) * 4;
-                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    const above = y > 0 ? (data[((y-1) * canvasWidth + x) * 4] + data[((y-1) * canvasWidth + x) * 4 + 1] + data[((y-1) * canvasWidth + x) * 4 + 2]) / 3 : 0;
                     
-                    if (Math.abs(current - above) > 30) {
-                        frameEdges++;
+                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const right = (data[i + 4] + data[i + 5] + data[i + 6]) / 3;
+                    const bottom = (data[i + canvasWidth * 4] + data[i + canvasWidth * 4 + 1] + data[i + canvasWidth * 4 + 2]) / 3;
+                    
+                    const diffRight = Math.abs(current - right);
+                    const diffBottom = Math.abs(current - bottom);
+                    
+                    if (diffRight > 40 || diffBottom > 40) {
+                        strongEdges++;
                     }
                     totalChecks++;
+                }
+            }
+            
+            return totalChecks > 0 ? Math.min(strongEdges / (totalChecks * 0.25), 1) : 0;
+        }
+
+        // 2. DÉTECTION DES COULEURS TYPIQUES DES CAGES
+        function detectGoalColors(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            let goalColorPixels = 0;
+            let totalPixels = 0;
+            
+            const startX = Math.max(0, centerX - width/2);
+            const endX = Math.min(canvasWidth, centerX + width/2);
+            const startY = Math.max(0, centerY - height/2);
+            const endY = Math.min(imageData.height, centerY + height/2);
+            
+            for (let y = startY; y < endY; y += 2) {
+                for (let x = startX; x < endX; x += 2) {
+                    const i = (y * canvasWidth + x) * 4;
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // Détecter couleurs typiques des cages
+                    const brightness = (r + g + b) / 3;
+                    const isWhite = r > 200 && g > 200 && b > 200; // Blanc
+                    const isGray = Math.abs(r - g) < 30 && Math.abs(g - b) < 30 && brightness > 100 && brightness < 200; // Gris métal
+                    const isYellow = r > 200 && g > 200 && b < 100; // Jaune
+                    
+                    if (isWhite || isGray || isYellow) {
+                        goalColorPixels++;
+                    }
+                    totalPixels++;
+                }
+            }
+            
+            return totalPixels > 0 ? Math.min(goalColorPixels / (totalPixels * 0.3), 1) : 0;
+        }
+
+        // 3. DÉTECTION DE LA GÉOMÉTRIE RECTANGULAIRE
+        function detectRectangularShape(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            const startX = Math.max(0, centerX - width/2);
+            const endX = Math.min(canvasWidth, centerX + width/2);
+            const startY = Math.max(0, centerY - height/2);
+            const endY = Math.min(imageData.height, centerY + height/2);
+            
+            // Analyser les bords du rectangle
+            let topEdgeStrength = 0;
+            let bottomEdgeStrength = 0;
+            let leftEdgeStrength = 0;
+            let rightEdgeStrength = 0;
+            
+            // Bord du haut
+            for (let x = startX; x < endX; x += 3) {
+                if (startY > 0) {
+                    const i = (startY * canvasWidth + x) * 4;
+                    const above = ((startY-1) * canvasWidth + x) * 4;
+                    const diff = Math.abs((data[i] + data[i+1] + data[i+2]) - (data[above] + data[above+1] + data[above+2]));
+                    if (diff > 90) topEdgeStrength++;
+                }
+            }
+            
+            // Bord du bas  
+            for (let x = startX; x < endX; x += 3) {
+                if (endY < imageData.height) {
+                    const i = ((endY-1) * canvasWidth + x) * 4;
+                    const below = (endY * canvasWidth + x) * 4;
+                    const diff = Math.abs((data[i] + data[i+1] + data[i+2]) - (data[below] + data[below+1] + data[below+2]));
+                    if (diff > 90) bottomEdgeStrength++;
                 }
             }
             
             // Bords gauche et droit
             for (let y = startY; y < endY; y += 3) {
                 // Gauche
-                const xLeft = startX;
-                if (xLeft >= 0 && xLeft < canvasWidth) {
-                    const i = (y * canvasWidth + xLeft) * 4;
-                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    const left = xLeft > 0 ? (data[(y * canvasWidth + (xLeft-1)) * 4] + data[(y * canvasWidth + (xLeft-1)) * 4 + 1] + data[(y * canvasWidth + (xLeft-1)) * 4 + 2]) / 3 : 0;
-                    
-                    if (Math.abs(current - left) > 30) {
-                        frameEdges++;
-                    }
-                    totalChecks++;
+                if (startX > 0) {
+                    const i = (y * canvasWidth + startX) * 4;
+                    const left = (y * canvasWidth + (startX-1)) * 4;
+                    const diff = Math.abs((data[i] + data[i+1] + data[i+2]) - (data[left] + data[left+1] + data[left+2]));
+                    if (diff > 90) leftEdgeStrength++;
                 }
                 
                 // Droite
-                const xRight = endX - 1;
-                if (xRight >= 0 && xRight < canvasWidth) {
-                    const i = (y * canvasWidth + xRight) * 4;
-                    const current = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    const right = xRight < canvasWidth-1 ? (data[(y * canvasWidth + (xRight+1)) * 4] + data[(y * canvasWidth + (xRight+1)) * 4 + 1] + data[(y * canvasWidth + (xRight+1)) * 4 + 2]) / 3 : 0;
-                    
-                    if (Math.abs(current - right) > 30) {
-                        frameEdges++;
-                    }
-                    totalChecks++;
+                if (endX < canvasWidth) {
+                    const i = (y * canvasWidth + (endX-1)) * 4;
+                    const right = (y * canvasWidth + endX) * 4;
+                    const diff = Math.abs((data[i] + data[i+1] + data[i+2]) - (data[right] + data[right+1] + data[right+2]));
+                    if (diff > 90) rightEdgeStrength++;
                 }
             }
             
-            return totalChecks > 0 ? Math.min(frameEdges / (totalChecks * 0.25), 1) : 0;
+            // Score basé sur la détection des 4 bords
+            const edgeScore = (topEdgeStrength + bottomEdgeStrength + leftEdgeStrength + rightEdgeStrength) / 100;
+            return Math.min(edgeScore, 1);
         }
 
-        // Détecter la structure rectangulaire
-        function detectRectangularStructure(imageData, centerX, centerY, width, height) {
+        // 4. VÉRIFICATION DE LA SYMÉTRIE
+        function checkSymmetry(imageData, centerX, centerY, width, height) {
             const data = imageData.data;
             const canvasWidth = imageData.width;
+            
+            let symmetryScore = 0;
+            let comparisons = 0;
             
             const startX = Math.max(0, centerX - width/2);
             const endX = Math.min(canvasWidth, centerX + width/2);
             const startY = Math.max(0, centerY - height/2);
             const endY = Math.min(imageData.height, centerY + height/2);
             
-            // Analyser les coins du rectangle
-            let cornerScore = 0;
-            const corners = [
-                {x: startX, y: startY}, // Haut-gauche
-                {x: endX-1, y: startY}, // Haut-droite
-                {x: startX, y: endY-1}, // Bas-gauche
-                {x: endX-1, y: endY-1}  // Bas-droite
-            ];
+            // Comparer côté gauche vs côté droit
+            for (let y = startY; y < endY; y += 4) {
+                for (let offset = 0; offset < width/4; offset += 4) {
+                    const leftX = startX + offset;
+                    const rightX = endX - offset - 1;
+                    
+                    if (leftX >= 0 && rightX < canvasWidth && leftX < rightX) {
+                        const leftI = (y * canvasWidth + leftX) * 4;
+                        const rightI = (y * canvasWidth + rightX) * 4;
+                        
+                        const leftBrightness = (data[leftI] + data[leftI + 1] + data[leftI + 2]) / 3;
+                        const rightBrightness = (data[rightI] + data[rightI + 1] + data[rightI + 2]) / 3;
+                        
+                        const similarity = 1 - Math.abs(leftBrightness - rightBrightness) / 255;
+                        symmetryScore += similarity;
+                        comparisons++;
+                    }
+                }
+            }
             
-            corners.forEach(corner => {
-                if (corner.x >= 0 && corner.x < canvasWidth && corner.y >= 0 && corner.y < imageData.height) {
-                    const i = (corner.y * canvasWidth + corner.x) * 4;
+            return comparisons > 0 ? symmetryScore / comparisons : 0;
+        }
+
+        // 5. ANALYSE DU CONTRASTE
+        function analyzeContrast(imageData, centerX, centerY, width, height) {
+            const data = imageData.data;
+            const canvasWidth = imageData.width;
+            
+            // Analyser le contraste entre l'intérieur et l'extérieur de la zone
+            let insideAvg = 0;
+            let outsideAvg = 0;
+            let insideCount = 0;
+            let outsideCount = 0;
+            
+            const startX = Math.max(0, centerX - width/2);
+            const endX = Math.min(canvasWidth, centerX + width/2);
+            const startY = Math.max(0, centerY - height/2);
+            const endY = Math.min(imageData.height, centerY + height/2);
+            
+            // Zone élargie pour comparaison
+            const outerStartX = Math.max(0, centerX - width);
+            const outerEndX = Math.min(canvasWidth, centerX + width);
+            const outerStartY = Math.max(0, centerY - height);
+            const outerEndY = Math.min(imageData.height, centerY + height);
+            
+            for (let y = outerStartY; y < outerEndY; y += 3) {
+                for (let x = outerStartX; x < outerEndX; x += 3) {
+                    const i = (y * canvasWidth + x) * 4;
                     const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
                     
-                    // Rechercher des contrastes autour du coin
-                    let maxContrast = 0;
-                    for (let dy = -2; dy <= 2; dy++) {
-                        for (let dx = -2; dx <= 2; dx++) {
-                            const nx = corner.x + dx;
-                            const ny = corner.y + dy;
-                            if (nx >= 0 && nx < canvasWidth && ny >= 0 && ny < imageData.height) {
-                                const ni = (ny * canvasWidth + nx) * 4;
-                                const nBrightness = (data[ni] + data[ni + 1] + data[ni + 2]) / 3;
-                                maxContrast = Math.max(maxContrast, Math.abs(brightness - nBrightness));
-                            }
-                        }
-                    }
-                    
-                    if (maxContrast > 40) {
-                        cornerScore++;
-                    }
-                }
-            });
-            
-            return cornerScore / 4; // Score basé sur les 4 coins
-        }
-
-        // Détecter les poteaux de but (objets verticaux clairs)
-        function detectGoalPosts(imageData, centerX, centerY, width, height) {
-            const data = imageData.data;
-            const canvasWidth = imageData.width;
-            
-            let postScore = 0;
-            let totalChecks = 0;
-            
-            const startX = Math.max(0, centerX - width/2);
-            const endX = Math.min(canvasWidth, centerX + width/2);
-            const startY = Math.max(0, centerY - height/2);
-            const endY = Math.min(imageData.height, centerY + height/2);
-            
-            // Zones des poteaux (gauche et droite)
-            const postWidth = Math.floor(width * 0.1); // 10% de la largeur pour chaque poteau
-            
-            // Poteau gauche
-            for (let y = startY; y < endY; y += 2) {
-                for (let x = startX; x < startX + postWidth; x += 2) {
-                    if (x >= 0 && x < canvasWidth) {
-                        const i = (y * canvasWidth + x) * 4;
-                        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                        
-                        if (brightness > 100) { // Objet relativement clair
-                            postScore++;
-                        }
-                        totalChecks++;
+                    if (x >= startX && x < endX && y >= startY && y < endY) {
+                        // À l'intérieur
+                        insideAvg += brightness;
+                        insideCount++;
+                    } else {
+                        // À l'extérieur
+                        outsideAvg += brightness;
+                        outsideCount++;
                     }
                 }
             }
             
-            // Poteau droit
-            for (let y = startY; y < endY; y += 2) {
-                for (let x = endX - postWidth; x < endX; x += 2) {
-                    if (x >= 0 && x < canvasWidth) {
-                        const i = (y * canvasWidth + x) * 4;
-                        const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                        
-                        if (brightness > 100) { // Objet relativement clair
-                            postScore++;
-                        }
-                        totalChecks++;
-                    }
-                }
+            if (insideCount > 0 && outsideCount > 0) {
+                insideAvg /= insideCount;
+                outsideAvg /= outsideCount;
+                
+                // Un bon contraste indique une cage (objet clair sur fond sombre ou vice versa)
+                const contrast = Math.abs(insideAvg - outsideAvg) / 255;
+                return Math.min(contrast * 2, 1); // Amplifier le contraste
             }
             
-            return totalChecks > 0 ? Math.min(postScore / (totalChecks * 0.3), 1) : 0;
+            return 0;
         }
 
         function toggleAlignmentDetection() {
@@ -1094,11 +1153,11 @@
                     // Supprimer les classes précédentes
                     goalFrame.classList.remove('aligned', 'partial');
                     
-                    // Seuils adaptés pour le contour
-                    if (confidence > 0.4) {
+                    // Seuils adaptés pour la détection hybride
+                    if (confidence > 0.5) {
                         goalFrame.classList.add('aligned');
                         updateStatus('✅ PARFAIT ! Cage parfaitement alignée dans le contour');
-                    } else if (confidence > 0.2) {
+                    } else if (confidence > 0.25) {
                         goalFrame.classList.add('partial');
                         updateStatus('🟠 Cage détectée - Ajustez l\'alignement');
                     } else {
